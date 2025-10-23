@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { runLLM } from "./finagent_bridge"
+import { runLLM } from "./gpt_model"
 
 /**
  * Load MCC codes dictionary
