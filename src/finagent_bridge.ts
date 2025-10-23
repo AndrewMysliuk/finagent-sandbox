@@ -1,16 +1,29 @@
-import axios from "axios"
+import OpenAI from "openai"
+import "dotenv/config"
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 export async function runLLM(prompt: string): Promise<string> {
   try {
-    const response = await axios.post("http://localhost:11434/api/generate", {
-      model: "mistral:7b-instruct",
-      prompt,
-      stream: false,
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 1500,
     })
 
-    return response.data.response
+    const text = response.choices[0]?.message?.content?.trim() || ""
+
+    return text
   } catch (err: any) {
-    console.error("Ollama request failed:", err.message)
+    console.error("OpenAI request failed:", err.message)
     return "Error: model request failed"
   }
 }
