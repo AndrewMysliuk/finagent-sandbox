@@ -1,5 +1,15 @@
 import fs from "fs"
 import path from "path"
+import { runLLM } from "./finagent_bridge"
+
+/**
+ * Load MCC codes dictionary
+ */
+export function loadMccDictionary(): Record<number, string> {
+  const filePath = path.resolve(process.cwd(), "dictionaries", "mcc_codes.json")
+  if (!fs.existsSync(filePath)) throw new Error("mcc_codes.json not found")
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"))
+}
 
 /**
  * Load client info (contains all accounts)
@@ -129,3 +139,110 @@ export function runV1AnalystLayer(): Record<string, IV1AnalystLayerResponse> {
   return results
 }
 
+/**
+ * === Finagent Brain v2.1 Layer (Interpreter) ===
+ * Categorization and recurrent expense analysis (improved)
+ */
+
+interface IV2InterpreterResponse {
+  account_type: string
+  currency: string
+  total_expense: string
+  categories: Record<string, string>
+  category_share_percent: Record<string, number>
+  recurrent_payments: string[]
+  top_category?: {
+    name: string
+    amount: string
+    share: number
+  }
+}
+
+/** Normalize transaction description */
+function normalizeDescription(desc: string): string {
+  return desc
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9а-яіїєґё\s]/gi, "") // remove special chars
+    .replace(/\s+/g, " ") // collapse multiple spaces
+}
+
+/** Detect recurrent payments (present in >=2 months, not stores or markets) */
+function detectRecurrentPayments(txs: ITransaction[]): string[] {
+  const monthly: Record<string, Set<number>> = {}
+
+  for (const t of txs) {
+    const desc = normalizeDescription(t.description)
+    const month = new Date(t.date).getMonth()
+    if (!monthly[desc]) monthly[desc] = new Set()
+    monthly[desc].add(month)
+  }
+
+  return Object.entries(monthly)
+    .filter(([_, months]) => months.size >= 2)
+    .filter(([desc]) => !/(market|shop|store|super|express|gas|fuel|beer|food|grocery|mart|mini|alcohol|liquor|hyper)/.test(desc))
+    .map(([desc]) => desc)
+}
+
+export function runV2InterpreterLayer(): Record<string, IV2InterpreterResponse> {
+  const client = loadClientInfo()
+  const MCC_MAP = loadMccDictionary()
+  const results: Record<string, IV2InterpreterResponse> = {}
+
+  for (const acc of client.accounts) {
+    const accountId = `${acc.type.toLowerCase()}_${acc.currency.toLowerCase()}`
+    const txs = loadYearTransactions(accountId)
+    if (!txs.length) continue
+
+    const expenseTxs = txs.filter((t) => t.type === TransactionTypeEnum.DEBIT)
+    if (!expenseTxs.length) continue
+
+    const categoryTotals: Record<string, number> = {}
+
+    // === 1. Aggregate expenses by MCC ===
+    for (const t of expenseTxs) {
+      const amount = Math.abs(t.amount_in_account_currency)
+      const category = MCC_MAP[t.mcc] || "Uncategorized"
+      categoryTotals[category] = safeAdd(categoryTotals[category] || 0, amount)
+    }
+
+    // === 2. Compute totals ===
+    let totalExpense = 0
+    for (const val of Object.values(categoryTotals)) totalExpense = safeAdd(totalExpense, val)
+
+    // === 3. Format results ===
+    const formattedCategories: Record<string, string> = {}
+    const sharePercent: Record<string, number> = {}
+    for (const [cat, amount] of Object.entries(categoryTotals)) {
+      formattedCategories[cat] = formatMoney(amount)
+      sharePercent[cat] = Math.round((amount / totalExpense) * 1000) / 10
+    }
+
+    // === 4. Detect recurrent patterns ===
+    const recurrent = detectRecurrentPayments(expenseTxs)
+
+    // === 5. Find top spending category ===
+    const topCatEntry = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0]
+    const topCategory = topCatEntry
+      ? {
+          name: topCatEntry[0],
+          amount: formatMoney(topCatEntry[1]),
+          share: sharePercent[topCatEntry[0]],
+        }
+      : undefined
+
+    // === 6. Save account report ===
+    results[acc.id] = {
+      account_type: acc.type,
+      currency: acc.currency,
+      total_expense: formatMoney(totalExpense),
+      categories: formattedCategories,
+      category_share_percent: sharePercent,
+      recurrent_payments: recurrent,
+      top_category: topCategory,
+    }
+  }
+
+  console.log(JSON.stringify(results, null, 2))
+  return results
+}
