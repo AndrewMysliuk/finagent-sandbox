@@ -1,22 +1,9 @@
 import fs from "fs"
 import path from "path"
 
-export enum TransactionTypeEnum {
-  DEBIT = "DEBIT",
-  CREDIT = "CREDIT",
-}
-
-export interface ITransaction {
-  id: string
-  date: string
-  description: string
-  type: TransactionTypeEnum
-  amount_in_account_currency: number
-  account_currency: string
-  cross_currency: boolean
-  mcc: number
-  balance_after: number
-}
+/**
+ * Load client info (contains all accounts)
+ */
 
 interface IClientInfo {
   client_id: string
@@ -35,9 +22,6 @@ interface IAccount {
   masked_pan: string[]
 }
 
-/**
- * Load client info (contains all accounts)
- */
 export function loadClientInfo(): IClientInfo {
   const filePath = path.resolve(process.cwd(), "data", "client_info.json")
   if (!fs.existsSync(filePath)) throw new Error("client_info.json not found")
@@ -47,6 +31,24 @@ export function loadClientInfo(): IClientInfo {
 /**
  * Load yearly transactions for a specific account
  */
+
+enum TransactionTypeEnum {
+  DEBIT = "DEBIT",
+  CREDIT = "CREDIT",
+}
+
+interface ITransaction {
+  id: string
+  date: string
+  description: string
+  type: TransactionTypeEnum
+  amount_in_account_currency: number
+  account_currency: string
+  cross_currency: boolean
+  mcc: number
+  balance_after: number
+}
+
 export function loadYearTransactions(accountId: string): ITransaction[] {
   const basePath = path.resolve(process.cwd(), "data")
   const filePath = path.join(basePath, `transactions_${accountId}_year.json`)
@@ -78,9 +80,19 @@ function formatMoney(value: number): string {
  * === Finagent Brain v1 Layer (Analyst) ===
  * Financial-safe version with cent precision arithmetic
  */
-export function runV1AnalystLayer() {
+
+interface IV1AnalystLayerResponse {
+  account_type: string
+  currency: string
+  income_total: string
+  expense_total: string
+  net_balance: string
+  transactions_count: number
+}
+
+export function runV1AnalystLayer(): Record<string, IV1AnalystLayerResponse> {
   const client = loadClientInfo()
-  const results: Record<string, any> = {}
+  const results: Record<string, IV1AnalystLayerResponse> = {}
 
   for (const acc of client.accounts) {
     const accountId = `${acc.type.toLowerCase()}_${acc.currency.toLowerCase()}`
@@ -110,12 +122,10 @@ export function runV1AnalystLayer() {
       expense_total: formatMoney(expense),
       net_balance: formatMoney(net),
       transactions_count: txs.length,
-    }
+    } as IV1AnalystLayerResponse
   }
 
   console.log(JSON.stringify(results, null, 2))
+  return results
 }
 
-if (require.main === module) {
-  runV1AnalystLayer()
-}
