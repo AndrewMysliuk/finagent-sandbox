@@ -42,11 +42,6 @@ export const MIN_SINGLE_TAX_RATE = 0.03
 export const MAX_ESV_RATE = 0.22
 export const MAX_MILITARY_TAX_RATE = 0.015
 
-// === group descriptions ===
-export const GROUP_LABEL_1 = "1 group — retail trade, household services, no employees"
-export const GROUP_LABEL_2 = "2 group — services, trade, restaurant business (up to 10 employees)"
-export const GROUP_LABEL_3 = "3 group — any activity, including IT, no employee limits"
-
 // === FOP config ===
 export const FOP_CONFIG_2025 = {
   year: 2025,
@@ -101,7 +96,6 @@ export async function update_usd_uah_rates() {
 }
 
 // === core logic ===
-
 export function get_fop_credit_transactions(): ITransaction[] {
   const client = loadClientInfo()
   const result: ITransaction[] = []
@@ -186,8 +180,6 @@ export async function calculate_fop_taxes(): Promise<{
 
   const DISABLED_QUARTERS = ["Q4"]
 
-  const active_quarters = Object.entries(quarters).filter(([key]) => !DISABLED_QUARTERS.includes(key))
-
   const summary: Record<string, IQuarterSummary> = {}
 
   const quarter_end_dates = {
@@ -212,7 +204,9 @@ export async function calculate_fop_taxes(): Promise<{
   let total_military_raw = 0
   let total_esv_raw = 0
 
-  for (const [key, data] of active_quarters) {
+  for (const [key, data] of Object.entries(quarters)) {
+    if (!data.is_closed || DISABLED_QUARTERS.includes(key)) continue
+
     let income_raw = 0
     for (const tx of data.transactions) {
       const date = new Date(tx.date).toISOString().split("T")[0]
@@ -240,7 +234,7 @@ export async function calculate_fop_taxes(): Promise<{
       single_tax_uah: formatMoney(single_tax_raw),
       military_tax_uah: formatMoney(military_raw),
       esv_uah: formatMoney(esv_raw),
-      is_quarter_closed: data.is_closed,
+      is_quarter_closed: true,
       report_deadline_date: report_deadline.toISOString().split("T")[0],
       tax_payment_deadline_date: payment_deadline.toISOString().split("T")[0],
       esv_payment_deadline_date: esv_deadlines[key as keyof typeof esv_deadlines],
@@ -260,12 +254,12 @@ export async function calculate_fop_taxes(): Promise<{
     income_limit_exceeded,
   }
 
-  // console.log({ by_quarter: summary, total })
+  console.log({ by_quarter: summary, total })
   return { by_quarter: summary, total }
 }
 
 // run
-// ;(async () => {
-//   await update_usd_uah_rates()
-//   await calculate_fop_taxes()
-// })()
+;(async () => {
+  await update_usd_uah_rates()
+  await calculate_fop_taxes()
+})()
