@@ -15,14 +15,14 @@ export function loadMccDictionary(): Record<number, string> {
  * Load client info (contains all accounts)
  */
 
-interface IClientInfo {
+export interface IClientInfo {
   client_id: string
   name: string
   permissions: string
   accounts: IAccount[]
 }
 
-interface IAccount {
+export interface IAccount {
   id: string
   iban: string
   type: string
@@ -42,18 +42,20 @@ export function loadClientInfo(): IClientInfo {
  * Load yearly transactions for a specific account
  */
 
-enum TransactionTypeEnum {
+export enum TransactionTypeEnum {
   DEBIT = "DEBIT",
   CREDIT = "CREDIT",
 }
 
-interface ITransaction {
+export interface ITransaction {
   id: string
   date: string
   description: string
   type: TransactionTypeEnum
   amount_in_account_currency: number
+  amount_in_operation_currency: number
   account_currency: string
+  operation_currency: string
   cross_currency: boolean
   mcc: number
   balance_after: number
@@ -72,17 +74,18 @@ export function loadYearTransactions(accountId: string): ITransaction[] {
     return []
   }
 }
+
 /**
  * Safe add with rounding to 2 decimals using integer cents
  */
-function safeAdd(a: number, b: number): number {
+export function safeAdd(a: number, b: number): number {
   return (Math.round(a * 100) + Math.round(b * 100)) / 100
 }
 
 /**
  * Format number with thousand separators and 2 decimals
  */
-function formatMoney(value: number): string {
+export function formatMoney(value: number): string {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 

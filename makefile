@@ -11,3 +11,6 @@ split_months:
 
 run_finagent_core:
 	$(TS_NODE) src/finagent_core.ts
+
+run_fop_taxes_counter:
+	$(TS_NODE) src/fop_taxes_counter.ts
