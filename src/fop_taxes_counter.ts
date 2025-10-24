@@ -84,7 +84,7 @@ async function get_usd_uah_rate(date: string): Promise<number> {
 
 export async function update_usd_uah_rates() {
   const txs = get_fop_credit_transactions()
-  const file_path = path.resolve("data", "usd_uah_rate.json")
+  const file_path = path.resolve("dictionaries", "usd_uah_rate.json")
   const cache = fs.existsSync(file_path) ? JSON.parse(fs.readFileSync(file_path, "utf-8")) : {}
 
   const unique_dates = [...new Set(txs.map((tx) => new Date(tx.date).toISOString().split("T")[0]))]
@@ -183,6 +183,11 @@ export async function calculate_fop_taxes(): Promise<{
 }> {
   const quarters = get_fop_credits_by_quarter()
   const cfg = FOP_CONFIG_2025
+
+  const DISABLED_QUARTERS = ["Q4"]
+
+  const active_quarters = Object.entries(quarters).filter(([key]) => !DISABLED_QUARTERS.includes(key))
+
   const summary: Record<string, IQuarterSummary> = {}
 
   const quarter_end_dates = {
@@ -199,7 +204,7 @@ export async function calculate_fop_taxes(): Promise<{
     Q4: `${cfg.year + 1}-01-20`,
   }
 
-  const rates_path = path.resolve("data", "usd_uah_rate.json")
+  const rates_path = path.resolve("dictionaries", "usd_uah_rate.json")
   const rates = fs.existsSync(rates_path) ? JSON.parse(fs.readFileSync(rates_path, "utf-8")) : {}
 
   let total_income_raw = 0
@@ -207,7 +212,7 @@ export async function calculate_fop_taxes(): Promise<{
   let total_military_raw = 0
   let total_esv_raw = 0
 
-  for (const [key, data] of Object.entries(quarters)) {
+  for (const [key, data] of active_quarters) {
     let income_raw = 0
     for (const tx of data.transactions) {
       const date = new Date(tx.date).toISOString().split("T")[0]
