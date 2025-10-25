@@ -2,6 +2,7 @@ import fs from "fs"
 import path from "path"
 import axios from "axios"
 import dotenv from "dotenv"
+import { sleep, normalizeMonobankTransaction } from "../../utils"
 
 dotenv.config()
 
@@ -9,28 +10,19 @@ dotenv.config()
 const DAYS_PER_REQUEST = 31
 const TOTAL_DAYS = 365
 const PAUSE_SECONDS = 30
-const OUTPUT_DIR = path.resolve(__dirname, "../data")
+const OUTPUT_DIR = path.resolve(__dirname, "../../../data")
 
-const CURRENCY_CODES: Record<number, string> = {
-  980: "UAH",
-  975: "BGN",
-  978: "EUR",
-  840: "USD",
-  985: "PLN",
-  949: "TRY",
-}
-
-// === LOAD TOKEN ===
 const TOKEN = process.env.MONOBANK_TOKEN
+
 if (!TOKEN) throw new Error("Missing MONOBANK_TOKEN in .env file")
+
+if (!fs.existsSync(OUTPUT_DIR)) {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true })
+}
 
 const headers = { "X-Token": TOKEN }
 
-// === UTILITIES ===
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
+// === FETCH TRANSACTIONS WITH RETRIES ===
 async function fetchTransactions(accountId: string, startTs: number, endTs: number, attempt = 1): Promise<any[]> {
   const url = `https://api.monobank.ua/personal/statement/${accountId}/${startTs}/${endTs}`
   try {
@@ -45,32 +37,6 @@ async function fetchTransactions(accountId: string, startTs: number, endTs: numb
     }
     console.error(`Error ${err.response?.status || ""}: ${err.message}`)
     return []
-  }
-}
-
-// === NORMALIZATION ===
-function normalize(tx: any, accountCurrency: string): Record<string, any> {
-  const accountAmount = Math.round(((tx.amount || 0) / 100) * 100) / 100
-  const operationAmount = Math.round(((tx.operationAmount || 0) / 100) * 100) / 100
-
-  const operationCurrencyCode = tx.currencyCode
-  const operationCurrency = CURRENCY_CODES[operationCurrencyCode] || "UNKNOWN"
-
-  const isCrossCurrency = operationCurrency !== accountCurrency
-  const type = accountAmount < 0 ? "DEBIT" : "CREDIT"
-
-  return {
-    id: tx.id,
-    date: new Date(tx.time * 1000).toISOString().replace("T", " ").split(".")[0],
-    description: tx.description || "",
-    type,
-    amount_in_account_currency: accountAmount,
-    amount_in_operation_currency: operationAmount,
-    account_currency: accountCurrency,
-    operation_currency: operationCurrency,
-    cross_currency: isCrossCurrency,
-    mcc: tx.mcc,
-    balance_after: Math.round(((tx.balance || 0) / 100) * 100) / 100,
   }
 }
 
@@ -104,7 +70,7 @@ async function fetchForAccount(account: any) {
       if (tx.id) allTxs[tx.id] = tx
     }
 
-    const normalized = Object.values(allTxs).map((tx) => normalize(tx, account.currency))
+    const normalized = Object.values(allTxs).map((tx) => normalizeMonobankTransaction(tx, account.currency))
     fs.writeFileSync(outputFile, JSON.stringify(normalized, null, 2), "utf-8")
 
     end = start

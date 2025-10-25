@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 
 // Directories inside data/
-const DATA_ROOT = path.resolve(__dirname, "../data")
+const DATA_ROOT = path.resolve(__dirname, "../../../data")
 const INPUT_DIR = DATA_ROOT
 const OUTPUT_BASE = path.join(DATA_ROOT, "transactions_by_month")
 

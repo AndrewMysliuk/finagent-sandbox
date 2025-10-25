@@ -5,7 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-export async function runLLM(prompt: string): Promise<string> {
+export async function defaultChat(prompt: string): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
