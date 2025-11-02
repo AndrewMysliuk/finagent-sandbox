@@ -4,7 +4,7 @@ import path from "path"
 const NBU_URL = "https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?valcode=USD&date="
 
 export const get_usd_uah_rate = async (date: string): Promise<number> => {
-  const file_path = path.resolve("../dictionaries", "usd_uah_rate.json")
+  const file_path = path.resolve("dictionaries", "usd_uah_rate.json")
   const cache = fs.existsSync(file_path) ? JSON.parse(fs.readFileSync(file_path, "utf-8")) : {}
 
   if (cache[date]) return cache[date]
