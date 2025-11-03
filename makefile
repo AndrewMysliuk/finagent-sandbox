@@ -15,5 +15,8 @@ run_finagent_core:
 run_fop_taxes_group_1_counter:
 	$(TS_NODE) src/taxes_counter/fop_taxes_group_1_counter.ts
 
+run_fop_taxes_group_2_counter:
+	$(TS_NODE) src/taxes_counter/fop_taxes_group_2_counter.ts
+
 run_fop_taxes_group_3_counter:
 	$(TS_NODE) src/taxes_counter/fop_taxes_group_3_counter.ts

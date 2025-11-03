@@ -74,3 +74,26 @@ export async function update_usd_uah_rates() {
   fs.writeFileSync(file_path, JSON.stringify(cache, null, 2))
   console.log(`File updated: ${file_path}`)
 }
+
+export function get_base_fop_data() {
+  const quarters = get_fop_credits_by_quarter()
+
+  const quarter_end_dates = {
+    Q1: `${BASE_FOP_CONFIG.year}-03-31`,
+    Q2: `${BASE_FOP_CONFIG.year}-06-30`,
+    Q3: `${BASE_FOP_CONFIG.year}-09-30`,
+    Q4: `${BASE_FOP_CONFIG.year}-12-31`,
+  }
+
+  const esv_deadlines = {
+    Q1: `${BASE_FOP_CONFIG.year}-04-20`,
+    Q2: `${BASE_FOP_CONFIG.year}-07-20`,
+    Q3: `${BASE_FOP_CONFIG.year}-10-20`,
+    Q4: `${BASE_FOP_CONFIG.year + 1}-01-20`,
+  }
+
+  const rates_path = path.resolve(__dirname, "../../dictionaries/usd_uah_rate.json")
+  const rates = fs.existsSync(rates_path) ? JSON.parse(fs.readFileSync(rates_path, "utf-8")) : {}
+
+  return { quarters, quarter_end_dates, esv_deadlines, rates }
+}

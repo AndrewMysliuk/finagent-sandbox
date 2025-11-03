@@ -1,37 +1,16 @@
-import fs from "fs"
-import path from "path"
 import { IQuarterSummary, IYearSummary } from "../types"
-import { formatMoney, safeAdd } from "../utils"
+import { DISABLED_QUARTERS, formatMoney, safeAdd } from "../utils"
 import { FOP_CONFIG_2025_GROUP_3 } from "./config"
-import { get_fop_credits_by_quarter, update_usd_uah_rates } from "./common"
+import { get_base_fop_data, update_usd_uah_rates } from "./common"
 
-export async function calculate_fop_taxes(closed_periods = false): Promise<{
+export async function calculate_fop_taxes_group3(closed_periods = false): Promise<{
   by_quarter: Record<string, IQuarterSummary>
   total: IYearSummary
 }> {
-  const quarters = get_fop_credits_by_quarter()
   const cfg = FOP_CONFIG_2025_GROUP_3
-
-  const DISABLED_QUARTERS = ["Q4"]
+  const { quarters, quarter_end_dates, esv_deadlines, rates } = get_base_fop_data()
 
   const summary: Record<string, IQuarterSummary> = {}
-
-  const quarter_end_dates = {
-    Q1: `${cfg.year}-03-31`,
-    Q2: `${cfg.year}-06-30`,
-    Q3: `${cfg.year}-09-30`,
-    Q4: `${cfg.year}-12-31`,
-  }
-
-  const esv_deadlines = {
-    Q1: `${cfg.year}-04-20`,
-    Q2: `${cfg.year}-07-20`,
-    Q3: `${cfg.year}-10-20`,
-    Q4: `${cfg.year + 1}-01-20`,
-  }
-
-  const rates_path = path.resolve(__dirname, "../../dictionaries/usd_uah_rate.json")
-  const rates = fs.existsSync(rates_path) ? JSON.parse(fs.readFileSync(rates_path, "utf-8")) : {}
 
   let total_income_raw = 0
   let total_single_tax_raw = 0
@@ -89,12 +68,12 @@ export async function calculate_fop_taxes(closed_periods = false): Promise<{
     income_limit_exceeded,
   }
 
-  console.log({ by_quarter: summary, total })
   return { by_quarter: summary, total }
 }
 
 // run
 ;(async () => {
   await update_usd_uah_rates()
-  await calculate_fop_taxes()
+  const { by_quarter, total } = await calculate_fop_taxes_group3()
+  console.log({ by_quarter, total })
 })()
