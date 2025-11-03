@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import { IQuarterSummary, IYearSummary } from "../types"
 import { formatMoney, safeAdd } from "../utils"
-import { FOP_CONFIG_2025 } from "./config"
+import { FOP_CONFIG_2025_GROUP_3 } from "./config"
 import { get_fop_credits_by_quarter, update_usd_uah_rates } from "./common"
 
 export async function calculate_fop_taxes(closed_periods = false): Promise<{
@@ -10,7 +10,7 @@ export async function calculate_fop_taxes(closed_periods = false): Promise<{
   total: IYearSummary
 }> {
   const quarters = get_fop_credits_by_quarter()
-  const cfg = FOP_CONFIG_2025
+  const cfg = FOP_CONFIG_2025_GROUP_3
 
   const DISABLED_QUARTERS = ["Q4"]
 

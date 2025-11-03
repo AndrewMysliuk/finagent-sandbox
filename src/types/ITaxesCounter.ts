@@ -24,3 +24,11 @@ export interface IYearSummary {
   total_tax_load_percent: string
   income_limit_exceeded: boolean
 }
+
+export interface ISingleTaxGroup1 {
+  community: string | null
+  year: number | null
+  rate_percent: number | null
+  group: number | null
+  source_url: string | null
+}

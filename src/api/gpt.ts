@@ -1,29 +1,53 @@
 import OpenAI from "openai"
 import "dotenv/config"
+import { IStructuredPromptPayload } from "../types"
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-export async function defaultChat(prompt: string): Promise<string> {
+export async function fetchStructuredResponse<T>(payload: IStructuredPromptPayload): Promise<T> {
+  const { prompt, schema, schemaName, description } = payload
+
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: "gpt-4o",
-      messages: [
+      input: prompt,
+      temperature: 0.3,
+      max_output_tokens: 500,
+      tools: [
         {
-          role: "user",
-          content: prompt,
+          type: "web_search",
+          search_context_size: "high",
+          user_location: {
+            country: "UA",
+          },
         },
       ],
-      temperature: 0.3,
-      max_tokens: 1500,
+      text: {
+        format: {
+          type: "json_schema",
+          name: schemaName,
+          description: description ?? "Structured JSON response",
+          schema,
+          strict: true,
+        },
+      },
     })
 
-    const text = response.choices[0]?.message?.content?.trim() || ""
+    console.dir(response, { depth: null, colors: true })
 
-    return text
+    if (!response.output_text) {
+      throw new Error("Missing output_text in OpenAI response")
+    }
+
+    try {
+      return JSON.parse(response.output_text) as T
+    } catch (err) {
+      throw new Error(`Invalid JSON in output_text: ${(err as Error).message}`)
+    }
   } catch (err: any) {
     console.error("OpenAI request failed:", err.message)
-    return "Error: model request failed"
+    throw new Error(`OpenAI structured response failed: ${err.message}`)
   }
 }

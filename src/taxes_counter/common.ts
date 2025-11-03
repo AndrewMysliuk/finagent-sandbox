@@ -3,7 +3,7 @@ import path from "path"
 import { IQuarterData, ITransaction, TransactionTypeEnum } from "../types"
 import { loadClientInfo, loadYearTransactions } from "../utils"
 import { get_usd_uah_rate } from "../api"
-import { FOP_CONFIG_2025 } from "./config"
+import { BASE_FOP_CONFIG } from "./config"
 
 // === core logic ===
 export function get_fop_credit_transactions(): ITransaction[] {
@@ -11,7 +11,7 @@ export function get_fop_credit_transactions(): ITransaction[] {
   const result: ITransaction[] = []
 
   for (const acc of client.accounts) {
-    if (acc.type !== "fop" || acc.currency !== FOP_CONFIG_2025.currency) continue
+    if (acc.type !== "fop" || acc.currency !== BASE_FOP_CONFIG.currency) continue
 
     const account_id = `${acc.type.toLowerCase()}_${acc.currency.toLowerCase()}`
     const txs = loadYearTransactions(account_id)
@@ -27,7 +27,7 @@ export function get_fop_credit_transactions(): ITransaction[] {
 export function get_fop_credits_by_quarter(): Record<string, IQuarterData> {
   const all_txs = get_fop_credit_transactions()
 
-  const year_start = new Date(`${FOP_CONFIG_2025.year}-01-01`)
+  const year_start = new Date(`${BASE_FOP_CONFIG.year}-01-01`)
   const now = new Date()
 
   const filtered = all_txs.filter((tx) => new Date(tx.date) >= year_start)
