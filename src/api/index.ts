@@ -1,2 +1,2 @@
-export * from "./gpt"
 export * from "./nbu"
+export * from "./openai"

@@ -20,3 +20,6 @@ run_fop_taxes_group_2_counter:
 
 run_fop_taxes_group_3_counter:
 	$(TS_NODE) src/taxes_counter/fop_taxes_group_3_counter.ts
+
+run_statement_parser:
+	$(TS_NODE) src/statement_parser/index.ts

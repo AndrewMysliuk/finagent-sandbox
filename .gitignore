@@ -5,6 +5,8 @@
 # --- Data folders ---
 data/
 data/*
+files/
+files/*
 
 # --- Node.js ---
 node_modules/

@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date_and_time": { "type": "string" },
+          "purpose_of_payment": { "type": "string" },
+          "partner_details": { "type": ["string", "null"] },
+          "operation_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "amount_nbu_exchange_rate_equivalent": { "type": ["number", "null"] },
+          "exchange_rate": { "type": ["number", "null"] },
+          "commission_usd": { "type": ["number", "null"] },
+          "balance": { "type": ["number", "null"] }
+        },
+        "required": [
+          "date_and_time",
+          "purpose_of_payment",
+          "partner_details",
+          "operation_amount",
+          "currency",
+          "amount_nbu_exchange_rate_equivalent",
+          "exchange_rate",
+          "commission_usd",
+          "balance"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["transactions"],
+  "additionalProperties": false
+}

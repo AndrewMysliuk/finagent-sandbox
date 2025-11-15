@@ -1,25 +1,7 @@
-import { fetchStructuredResponse } from "../api"
-import singleTaxGroup1Schema from "../api/json_schema/single_tax_group_1.schema.json"
-import { IQuarterSummary, ISingleTaxGroup1, IYearSummary } from "../types"
+import { IQuarterSummary, IYearSummary } from "../types"
 import { DISABLED_QUARTERS, formatMoney, safeAdd } from "../utils"
 import { get_base_fop_data, update_usd_uah_rates } from "./common"
 import { FOP_CONFIG_2025_GROUP_1 } from "./config"
-
-export async function getSingleTaxGroup1Info(): Promise<ISingleTaxGroup1> {
-  const prompt = `Знайди офіційне рішення або документ,
-у якому вказана ставка єдиного податку для 1-ї групи фізичних осіб-підприємців у Криворізькій міській територіальній громаді.
-Мене цікавить, який відсоток встановлений цією громадою і з якого року він діє.`
-
-  const response = await fetchStructuredResponse<ISingleTaxGroup1>({
-    prompt,
-    schema: singleTaxGroup1Schema,
-    schemaName: "single_tax_group_1",
-    description: "JSON-об'єкт з даними про ставку єдиного податку у Криворізькій міській територіальній громаді",
-  })
-
-  console.log("GPT Response: ", response)
-  return response
-}
 
 export async function calculate_fop_taxes_group1(closed_periods = false): Promise<{
   by_quarter: Record<string, IQuarterSummary>
