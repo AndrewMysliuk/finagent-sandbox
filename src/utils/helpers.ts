@@ -1,6 +1,6 @@
 import fs from "fs"
 import path from "path"
-import { IClientInfo, ITransaction } from "../types"
+import { IClientInfo, ITransactionAPI } from "../types"
 
 export const roundCents = (value: number = 0) => {
   return Math.round((value / 100) * 100) / 100
@@ -35,17 +35,8 @@ export const loadClientInfo = (): IClientInfo => {
 }
 
 // Load yearly transactions for a specific account
-export const loadYearTransactions = (accountId: string): ITransaction[] => {
+export const loadYearTransactions = (accountId: string): ITransactionAPI[] => {
   const filePath = path.resolve(process.cwd(), "data", `transactions_${accountId}_year.json`)
   if (!fs.existsSync(filePath)) throw new Error(`transactions_${accountId}_year.json not found`)
   return JSON.parse(fs.readFileSync(filePath, "utf-8"))
-}
-
-/** Normalize transaction description */
-export const normalizeDescription = (desc: string): string => {
-  return desc
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9а-яіїєґё\s]/gi, "")
-    .replace(/\s+/g, " ")
 }

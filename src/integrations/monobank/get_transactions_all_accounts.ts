@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import axios from "axios"
 import dotenv from "dotenv"
-import { sleep, normalizeMonobankTransaction } from "../../utils"
+import { sleep, normalizeMonobankTransactionAPI } from "../../utils"
 
 dotenv.config()
 
@@ -70,7 +70,7 @@ async function fetchForAccount(account: any) {
       if (tx.id) allTxs[tx.id] = tx
     }
 
-    const normalized = Object.values(allTxs).map((tx) => normalizeMonobankTransaction(tx, account.currency))
+    const normalized = Object.values(allTxs).map((tx) => normalizeMonobankTransactionAPI(tx, account.currency))
     fs.writeFileSync(outputFile, JSON.stringify(normalized, null, 2), "utf-8")
 
     end = start

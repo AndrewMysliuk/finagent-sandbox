@@ -1,7 +1,8 @@
 import fs from "fs"
 import { PDFParse, TextResult } from "pdf-parse"
-import { IBankDetectionResult, ParsedStatementByBankType } from "../types"
+import { IBankDetectionResult, ITransactionStatement } from "../types"
 import { parseMonobankStatement } from "./monobank"
+import { normalizeMonobankTransactionStatement } from "../utils"
 
 const STATEMENT_UAH_EN_PATH = "./files/statement_uah_en.pdf"
 const STATEMENT_UAH_UK_PATH = "./files/statement_uah_uk.pdf"
@@ -19,7 +20,19 @@ export async function readPdf(path: string): Promise<TextResult> {
 }
 
 export function fastCheckIsProbablyFinancial(document: TextResult): boolean {
-  const t = document.getPageText(1).toLowerCase()
+  if (!document.total || document.total < 1) {
+    return false
+  }
+
+  for (let i = 1; i <= document.total; i++) {
+    const txt = document.getPageText(i)?.trim()
+    if (!txt) return false
+  }
+
+  const firstPage = document.getPageText(1)
+  if (!firstPage) return false
+
+  const t = firstPage.toLowerCase()
 
   const keywordsEN = [
     "account statement",
@@ -63,10 +76,21 @@ export function fastCheckIsProbablyFinancial(document: TextResult): boolean {
     "оборот",
   ]
 
-  if (keywordsEN.some((k) => t.includes(k))) return true
-  if (keywordsUA.some((k) => t.includes(k))) return true
+  const hasKeywords = keywordsEN.some((k) => t.includes(k)) || keywordsUA.some((k) => t.includes(k))
 
-  return false
+  if (!hasKeywords) return false
+
+  const datePatterns = [
+    /\b\d{2}\.\d{2}\.\d{4}\b/, // 12.10.2025
+    /\b\d{2}\.\d{2}\.\d{2}\b/, // 12.10.25
+    /\b\d{4}-\d{2}-\d{2}\b/, // 2025-10-12
+    /\b\d{2}\/\d{2}\/\d{4}\b/, // 12/10/2025
+  ]
+
+  const hasDate = datePatterns.some((rx) => rx.test(firstPage))
+  if (!hasDate) return false
+
+  return true
 }
 
 export function detectBank(document: TextResult): IBankDetectionResult {
@@ -93,9 +117,16 @@ export function detectBank(document: TextResult): IBankDetectionResult {
   }
 }
 
-export async function parseStatementByBank(document: TextResult, bank: IBankDetectionResult): Promise<ParsedStatementByBankType> {
+export async function parseStatementByBank(document: TextResult, bank: IBankDetectionResult): Promise<ITransactionStatement[]> {
   if (bank.is_monobank) {
-    return parseMonobankStatement(document)
+    const rawData = await parseMonobankStatement(document)
+
+    if (!rawData.length) {
+      console.error("We couldn't read any transactions from this file.")
+      return
+    }
+
+    return rawData.map((item) => normalizeMonobankTransactionStatement(item))
   }
 
   if (bank.is_privatbank) {
@@ -127,11 +158,16 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
   const document = await readPdf(path)
 
   if (!fastCheckIsProbablyFinancial(document)) {
-    console.error("This PDF is probably not a financial statement.")
+    console.error("This file doesn’t look like a bank statement.")
     return
   }
 
   const bank = detectBank(document)
+
+  if (bank.is_unknown) {
+    console.error("We can't recognize this type of bank statement.")
+    return
+  }
 
   const result = await parseStatementByBank(document, bank)
 

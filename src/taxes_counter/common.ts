@@ -1,14 +1,14 @@
 import fs from "fs"
 import path from "path"
-import { IQuarterData, ITransaction, TransactionTypeEnum } from "../types"
+import { IQuarterData, ITransactionAPI, TransactionTypeEnum } from "../types"
 import { loadClientInfo, loadYearTransactions } from "../utils"
 import { get_usd_uah_rate } from "../api"
 import { BASE_FOP_CONFIG } from "./config"
 
 // === core logic ===
-export function get_fop_credit_transactions(): ITransaction[] {
+export function get_fop_credit_transactions(): ITransactionAPI[] {
   const client = loadClientInfo()
-  const result: ITransaction[] = []
+  const result: ITransactionAPI[] = []
 
   for (const acc of client.accounts) {
     if (acc.type !== "fop" || acc.currency !== BASE_FOP_CONFIG.currency) continue

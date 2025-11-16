@@ -1,7 +1,7 @@
-import { ITransaction } from "./ITransaction"
+import { ITransactionAPI } from "./ITransaction"
 
 export interface IQuarterData {
-  transactions: ITransaction[]
+  transactions: ITransactionAPI[]
   is_closed: boolean
 }
 
