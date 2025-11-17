@@ -4,10 +4,13 @@ import { IBankDetectionResult, ITransactionStatement } from "../types"
 import { parseMonobankStatement } from "./monobank"
 import { normalizeMonobankTransactionStatement } from "../utils"
 
-const STATEMENT_UAH_EN_PATH = "./files/statement_uah_en.pdf"
-const STATEMENT_UAH_UK_PATH = "./files/statement_uah_uk.pdf"
-const STATEMENT_USD_EN_PATH = "./files/statement_usd_en.pdf"
-const STATEMENT_USD_UK_PATH = "./files/statement_usd_uk.pdf"
+const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
+const MONOBANK_STATEMENT_UAH_UK_PATH = "./files/monobank_statement_uah_uk.pdf"
+const MONOBANK_STATEMENT_USD_EN_PATH = "./files/monobank_statement_usd_en.pdf"
+const MONOBANK_STATEMENT_USD_UK_PATH = "./files/monobank_statement_usd_uk.pdf"
+const WISE_STATEMENT_EUR_EN_PATH = "./files/wise_statement_eur_en.pdf"
+const PRYVAT_STATEMENT_GBP_UK_PATH = "./files/pryvat_statement_gbp_uk.pdf"
+const PRYVAT_STATEMENT_UAH_UK_PATH = "./files/pryvat_statement_uah_uk.pdf"
 const INVOICE_PATH = "./files/invoice.pdf"
 
 export async function readPdf(path: string): Promise<TextResult> {
@@ -154,7 +157,7 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
 
 // === Standalone ===
 ;(async () => {
-  const path = STATEMENT_USD_EN_PATH
+  const path = MONOBANK_STATEMENT_USD_EN_PATH
   const document = await readPdf(path)
 
   if (!fastCheckIsProbablyFinancial(document)) {
