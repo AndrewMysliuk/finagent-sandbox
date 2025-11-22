@@ -20,7 +20,8 @@ export async function runGptModel<T>(options: RunGptModelInput): Promise<T> {
     const fullPrompt = `${prompt}\n\nInput:\n${input}`
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
+      // model: "gpt-4o",
+      model: "gpt-4o-mini",
       response_format: {
         type: "json_schema",
         json_schema: {

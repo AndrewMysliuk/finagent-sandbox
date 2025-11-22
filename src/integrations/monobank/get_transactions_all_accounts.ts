@@ -8,7 +8,6 @@ dotenv.config()
 
 // === CONFIGURATION ===
 const DAYS_PER_REQUEST = 31
-const TOTAL_DAYS = 365
 const PAUSE_SECONDS = 30
 const OUTPUT_DIR = path.resolve(__dirname, "../../../data")
 
@@ -46,21 +45,26 @@ async function fetchForAccount(account: any) {
   const accountType = (account.type || "unknown").toLowerCase()
   const currency = (account.currency || "xxx").toLowerCase()
 
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true })
   const outputFile = path.join(OUTPUT_DIR, `transactions_${accountType}_${currency}_year.json`)
 
   console.log(`\n=== Fetching for ${accountType.toUpperCase()} (${currency}) ===`)
   console.log(`Account ID: ${accountId}`)
 
   const allTxs: Record<string, any> = {}
-  let end = new Date()
-  let start = new Date(end.getTime() - DAYS_PER_REQUEST * 24 * 3600 * 1000)
-  let totalDays = 0
+
+  const now = new Date()
+  const currentYear = now.getFullYear()
+
+  let start = new Date(currentYear, 0, 1)
+  let end = new Date(start.getTime() + DAYS_PER_REQUEST * 24 * 3600 * 1000)
+  if (end > now) end = now
+
   let iteration = 1
 
-  while (totalDays < TOTAL_DAYS) {
+  while (start < now) {
     const startTs = Math.floor(start.getTime() / 1000)
     const endTs = Math.floor(end.getTime() / 1000)
+
     console.log(`\n→ Request #${iteration}: ${start.toISOString().split("T")[0]} → ${end.toISOString().split("T")[0]}`)
 
     const data = await fetchTransactions(accountId, startTs, endTs)
@@ -71,15 +75,19 @@ async function fetchForAccount(account: any) {
     }
 
     const normalized = Object.values(allTxs).map((tx) => normalizeMonobankTransactionAPI(tx, account.currency))
+
     fs.writeFileSync(outputFile, JSON.stringify(normalized, null, 2), "utf-8")
 
-    end = start
-    start = new Date(start.getTime() - DAYS_PER_REQUEST * 24 * 3600 * 1000)
-    totalDays += DAYS_PER_REQUEST
-    iteration += 1
+    start = new Date(end.getTime())
+    end = new Date(start.getTime() + DAYS_PER_REQUEST * 24 * 3600 * 1000)
+    if (end > now) end = now
 
-    console.log(`Waiting ${PAUSE_SECONDS}s before next request...`)
-    await sleep(PAUSE_SECONDS * 1000)
+    iteration++
+
+    if (start < now) {
+      console.log(`Waiting ${PAUSE_SECONDS}s before next request...`)
+      await sleep(PAUSE_SECONDS * 1000)
+    }
   }
 
   console.log(`\nTotal unique transactions: ${Object.keys(allTxs).length}`)
@@ -103,7 +111,6 @@ async function main() {
       await fetchForAccount(acc)
     } catch (e: any) {
       console.error(`Error while fetching for account ${acc.id}: ${e.message}`)
-      continue
     }
   }
 

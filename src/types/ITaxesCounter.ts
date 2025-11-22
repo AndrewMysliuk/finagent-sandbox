@@ -1,7 +1,12 @@
-import { ITransactionAPI } from "./ITransaction"
+import { ITransactionAPI, ITransactionStatement } from "./ITransaction"
 
-export interface IQuarterData {
+export interface IQuarterAPIData {
   transactions: ITransactionAPI[]
+  is_closed: boolean
+}
+
+export interface IQuarterStatementData {
+  transactions: ITransactionStatement[]
   is_closed: boolean
 }
 
@@ -16,19 +21,11 @@ export interface IQuarterSummary {
   esv_payment_deadline_date: string
 }
 
-export interface IYearSummary {
+export interface IIntermediateSummary {
   total_income_uah: string
   total_single_tax_uah: string
   total_military_tax_uah: string
   total_esv_uah: string
   total_tax_load_percent: string
   income_limit_exceeded: boolean
-}
-
-export interface ISingleTaxGroup1 {
-  community: string | null
-  year: number | null
-  rate_percent: number | null
-  group: number | null
-  source_url: string | null
 }

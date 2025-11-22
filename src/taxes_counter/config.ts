@@ -25,6 +25,20 @@ export const BASE_FOP_CONFIG = {
   payment_deadline_days: PAYMENT_DEADLINE_DAYS,
 }
 
+export const QUARTER_END_DATES = {
+  Q1: `${BASE_FOP_CONFIG.year}-03-31`,
+  Q2: `${BASE_FOP_CONFIG.year}-06-30`,
+  Q3: `${BASE_FOP_CONFIG.year}-09-30`,
+  Q4: `${BASE_FOP_CONFIG.year}-12-31`,
+}
+
+export const ESV_DEADLINES = {
+  Q1: `${BASE_FOP_CONFIG.year}-04-20`,
+  Q2: `${BASE_FOP_CONFIG.year}-07-20`,
+  Q3: `${BASE_FOP_CONFIG.year}-10-20`,
+  Q4: `${BASE_FOP_CONFIG.year + 1}-01-20`,
+}
+
 export const FOP_CONFIG_2025_GROUP_1 = {
   ...BASE_FOP_CONFIG,
   group: 1,

@@ -15,10 +15,13 @@ export const safeAdd = (a: number, b: number): number => {
   return (Math.round(a * 100) + Math.round(b * 100)) / 100
 }
 
-// Format number with thousand separators and 2 decimals
-export const formatMoney = (value: number): string => {
+// To format number with thousand separators and 2 decimals
+export const toMoneyFormat = (value: number): string => {
   return value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+// From format number with thousand separators and 2 decimals
+export const fromMoneyFormat = (value: string): number => parseFloat(value.replace(/,/g, "")) || 0
 
 // Load MCC codes dictionary
 export const loadMccDictionary = (): Record<number, string> => {

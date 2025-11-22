@@ -1,12 +1,12 @@
 import fs from "fs"
 import path from "path"
-import { IQuarterData, ITransactionAPI, TransactionTypeEnum } from "../types"
+import { IQuarterAPIData, IQuarterStatementData, ITransactionAPI, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { loadClientInfo, loadYearTransactions } from "../utils"
-import { get_usd_uah_rate } from "../api"
+import { getUAHRate } from "../api"
 import { BASE_FOP_CONFIG } from "./config"
 
 // === core logic ===
-export function get_fop_credit_transactions(): ITransactionAPI[] {
+export function getFopCreditTransactionsAPI(): ITransactionAPI[] {
   const client = loadClientInfo()
   const result: ITransactionAPI[] = []
 
@@ -24,15 +24,40 @@ export function get_fop_credit_transactions(): ITransactionAPI[] {
   return result
 }
 
-export function get_fop_credits_by_quarter(): Record<string, IQuarterData> {
-  const all_txs = get_fop_credit_transactions()
+// === NBU rates handling ===
+export async function updateUAHRates(from: string): Promise<Record<string, number>> {
+  const txs = getFopCreditTransactionsAPI()
+
+  const filename = `${from.toLowerCase()}_uah_rate.json`
+  const file_path = path.resolve(__dirname, `../../dictionaries/${filename}`)
+
+  const cache: Record<string, number> = fs.existsSync(file_path) ? JSON.parse(fs.readFileSync(file_path, "utf-8")) : {}
+
+  const unique_dates = [
+    ...new Set(txs.filter((tx) => tx.operation_currency === from).map((tx) => new Date(tx.date).toISOString().split("T")[0])),
+  ]
+
+  for (const date of unique_dates) {
+    if (cache[date]) continue
+
+    const rate = await getUAHRate(from, date)
+    cache[date] = rate
+  }
+
+  fs.writeFileSync(file_path, JSON.stringify(cache, null, 2))
+
+  return cache
+}
+
+export function getFopCreditsByQuarterFromAPI(): Record<string, IQuarterAPIData> {
+  const all_txs = getFopCreditTransactionsAPI()
 
   const year_start = new Date(`${BASE_FOP_CONFIG.year}-01-01`)
   const now = new Date()
 
   const filtered = all_txs.filter((tx) => new Date(tx.date) >= year_start)
 
-  const quarters: Record<string, IQuarterData> = {
+  const quarters: Record<string, IQuarterAPIData> = {
     Q1: { transactions: [], is_closed: false },
     Q2: { transactions: [], is_closed: false },
     Q3: { transactions: [], is_closed: false },
@@ -56,44 +81,32 @@ export function get_fop_credits_by_quarter(): Record<string, IQuarterData> {
   return quarters
 }
 
-// === NBU rates handling ===
-export async function update_usd_uah_rates() {
-  const txs = get_fop_credit_transactions()
-  const file_path = path.resolve(__dirname, "../../dictionaries/usd_uah_rate.json")
-  const cache = fs.existsSync(file_path) ? JSON.parse(fs.readFileSync(file_path, "utf-8")) : {}
+export function getFopCreditsByQuarterFromStatement(statement_txs: ITransactionStatement[]): Record<string, IQuarterStatementData> {
+  const year_start = new Date(`${BASE_FOP_CONFIG.year}-01-01`)
+  const now = new Date()
 
-  const unique_dates = [...new Set(txs.map((tx) => new Date(tx.date).toISOString().split("T")[0]))]
+  const filtered = statement_txs.filter((tx) => new Date(tx.date) >= year_start)
 
-  for (const date of unique_dates) {
-    if (cache[date]) continue
-    const rate = await get_usd_uah_rate(date)
-    cache[date] = rate
-    console.log(`${date}: ${rate}`)
+  const quarters: Record<string, IQuarterStatementData> = {
+    Q1: { transactions: [], is_closed: false },
+    Q2: { transactions: [], is_closed: false },
+    Q3: { transactions: [], is_closed: false },
+    Q4: { transactions: [], is_closed: false },
   }
 
-  fs.writeFileSync(file_path, JSON.stringify(cache, null, 2))
-  console.log(`File updated: ${file_path}`)
-}
-
-export function get_base_fop_data() {
-  const quarters = get_fop_credits_by_quarter()
-
-  const quarter_end_dates = {
-    Q1: `${BASE_FOP_CONFIG.year}-03-31`,
-    Q2: `${BASE_FOP_CONFIG.year}-06-30`,
-    Q3: `${BASE_FOP_CONFIG.year}-09-30`,
-    Q4: `${BASE_FOP_CONFIG.year}-12-31`,
+  for (const tx of filtered) {
+    const month = new Date(tx.date).getMonth() + 1
+    if (month <= 3) quarters.Q1.transactions.push(tx)
+    else if (month <= 6) quarters.Q2.transactions.push(tx)
+    else if (month <= 9) quarters.Q3.transactions.push(tx)
+    else quarters.Q4.transactions.push(tx)
   }
 
-  const esv_deadlines = {
-    Q1: `${BASE_FOP_CONFIG.year}-04-20`,
-    Q2: `${BASE_FOP_CONFIG.year}-07-20`,
-    Q3: `${BASE_FOP_CONFIG.year}-10-20`,
-    Q4: `${BASE_FOP_CONFIG.year + 1}-01-20`,
-  }
+  const current_month = now.getMonth() + 1
+  if (current_month > 3) quarters.Q1.is_closed = true
+  if (current_month > 6) quarters.Q2.is_closed = true
+  if (current_month > 9) quarters.Q3.is_closed = true
+  if (current_month > 12) quarters.Q4.is_closed = true
 
-  const rates_path = path.resolve(__dirname, "../../dictionaries/usd_uah_rate.json")
-  const rates = fs.existsSync(rates_path) ? JSON.parse(fs.readFileSync(rates_path, "utf-8")) : {}
-
-  return { quarters, quarter_end_dates, esv_deadlines, rates }
+  return quarters
 }

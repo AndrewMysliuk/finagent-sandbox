@@ -1,16 +1,19 @@
-import { IQuarterSummary, IYearSummary } from "../types"
-import { DISABLED_QUARTERS, formatMoney, safeAdd } from "../utils"
-import { get_base_fop_data, update_usd_uah_rates } from "./common"
-import { FOP_CONFIG_2025_GROUP_2 } from "./config"
+import { IQuarterSummary, IIntermediateSummary } from "../types"
+import { DISABLED_QUARTERS, toMoneyFormat, safeAdd, fromMoneyFormat } from "../utils"
+import { updateUAHRates, getFopCreditsByQuarterFromAPI } from "./common"
+import { FOP_CONFIG_2025_GROUP_2, QUARTER_END_DATES, ESV_DEADLINES } from "./config"
 
-export async function calculate_fop_taxes_group2(closed_periods = false): Promise<{
-  by_quarter: Record<string, IQuarterSummary>
-  total: IYearSummary
+export async function calculateFopTaxesGroup2(closed_periods = false): Promise<{
+  quarter_data: Record<string, IQuarterSummary>
+  intermediate_summaries: Record<string, IIntermediateSummary>
 }> {
   const cfg = FOP_CONFIG_2025_GROUP_2
-  const { quarters, quarter_end_dates, esv_deadlines, rates } = get_base_fop_data()
+  const rates = await updateUAHRates("USD")
+  const quarters = getFopCreditsByQuarterFromAPI()
 
-  const summary: Record<string, IQuarterSummary> = {}
+  // QUARTER DATA
+
+  const quarter_data: Record<string, IQuarterSummary> = {}
 
   let total_income_raw = 0
   let total_single_tax_raw = 0
@@ -37,44 +40,59 @@ export async function calculate_fop_taxes_group2(closed_periods = false): Promis
     total_military_raw = safeAdd(total_military_raw, military_raw)
     total_esv_raw = safeAdd(total_esv_raw, esv_raw)
 
-    const end = new Date(quarter_end_dates[key as keyof typeof quarter_end_dates])
+    const end = new Date(QUARTER_END_DATES[key as keyof typeof QUARTER_END_DATES])
     const report_deadline = new Date(end)
     report_deadline.setDate(report_deadline.getDate() + cfg.reporting_deadline_days)
     const payment_deadline = new Date(end)
     payment_deadline.setDate(payment_deadline.getDate() + cfg.payment_deadline_days)
 
-    summary[key] = {
-      total_income_uah: formatMoney(income_raw),
-      single_tax_uah: formatMoney(single_tax_raw),
-      military_tax_uah: formatMoney(military_raw),
-      esv_uah: formatMoney(esv_raw),
+    quarter_data[key] = {
+      total_income_uah: toMoneyFormat(income_raw),
+      single_tax_uah: toMoneyFormat(single_tax_raw),
+      military_tax_uah: toMoneyFormat(military_raw),
+      esv_uah: toMoneyFormat(esv_raw),
       is_quarter_closed: data.is_closed,
       report_deadline_date: report_deadline.toISOString().split("T")[0],
       tax_payment_deadline_date: payment_deadline.toISOString().split("T")[0],
-      esv_payment_deadline_date: esv_deadlines[key as keyof typeof esv_deadlines],
+      esv_payment_deadline_date: ESV_DEADLINES[key as keyof typeof ESV_DEADLINES],
     }
   }
 
-  const income_limit_exceeded = total_income_raw > cfg.income_limit
-  const total_tax_load_percent =
-    total_income_raw > 0 ? (((total_single_tax_raw + total_military_raw + total_esv_raw) / total_income_raw) * 100).toFixed(2) + "%" : "0%"
+  // INTERMEDIATE SUMMARIES (Q1, Q1+Q2, Q1+Q2+Q3, Q1+Q2+Q3+Q4)
 
-  const total: IYearSummary = {
-    total_income_uah: formatMoney(total_income_raw),
-    total_single_tax_uah: formatMoney(total_single_tax_raw),
-    total_military_tax_uah: formatMoney(total_military_raw),
-    total_esv_uah: formatMoney(total_esv_raw),
-    total_tax_load_percent,
-    income_limit_exceeded,
+  const intermediate_summaries: Record<string, IIntermediateSummary> = {}
+  const ordered = ["Q1", "Q2", "Q3", "Q4"]
+
+  let acc_income = 0
+  let acc_single = 0
+  let acc_military = 0
+  let acc_esv = 0
+
+  for (const q of ordered) {
+    const s = quarter_data[q]
+    if (!s) continue
+
+    acc_income = safeAdd(acc_income, fromMoneyFormat(s.total_income_uah))
+    acc_single = safeAdd(acc_single, fromMoneyFormat(s.single_tax_uah))
+    acc_military = safeAdd(acc_military, fromMoneyFormat(s.military_tax_uah))
+    acc_esv = safeAdd(acc_esv, fromMoneyFormat(s.esv_uah))
+
+    intermediate_summaries[q] = {
+      total_income_uah: toMoneyFormat(acc_income),
+      total_single_tax_uah: toMoneyFormat(acc_single),
+      total_military_tax_uah: toMoneyFormat(acc_military),
+      total_esv_uah: toMoneyFormat(acc_esv),
+      total_tax_load_percent: acc_income > 0 ? (((acc_single + acc_military + acc_esv) / acc_income) * 100).toFixed(2) + "%" : "0%",
+      income_limit_exceeded: acc_income > cfg.income_limit,
+    }
   }
 
-  console.log({ by_quarter: summary, total })
-  return { by_quarter: summary, total }
+  return { quarter_data, intermediate_summaries }
 }
 
 // run standalone
 ;(async () => {
-  await update_usd_uah_rates()
-  const { by_quarter, total } = await calculate_fop_taxes_group2()
-  console.log({ by_quarter, total })
+  const result = await calculateFopTaxesGroup2()
+
+  console.dir(result, { depth: null })
 })()
