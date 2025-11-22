@@ -1,10 +1,10 @@
-import { IQuarterSummary } from "../types"
+import { IQuarterAPIData, IQuarterSummary } from "../types"
 import { DISABLED_QUARTERS, toMoneyFormat, safeAdd } from "../utils"
 import { updateUAHRates, getFopCreditsByQuarterFromAPI, calculateIntermediateSummaries } from "./common"
 import { FOP_CONFIG_2025_GROUP_2, QUARTER_END_DATES, ESV_DEADLINES } from "./config"
 
-function calculateQuarterDataGroup2(
-  quarters: ReturnType<typeof getFopCreditsByQuarterFromAPI>,
+export function calculateQuarterDataFromAPIForGroup2(
+  quarters: Record<string, IQuarterAPIData>,
   cfg: typeof FOP_CONFIG_2025_GROUP_2,
   rates: Record<string, number>,
   closed_periods: boolean
@@ -48,12 +48,12 @@ function calculateQuarterDataGroup2(
   return quarter_data
 }
 
-// run standalone
+// === Standalone ===
 ;(async () => {
   const rates = await updateUAHRates("USD")
   const quarters = getFopCreditsByQuarterFromAPI()
 
-  const quarter_data = calculateQuarterDataGroup2(quarters, FOP_CONFIG_2025_GROUP_2, rates, false)
+  const quarter_data = calculateQuarterDataFromAPIForGroup2(quarters, FOP_CONFIG_2025_GROUP_2, rates, false)
   const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_2.income_limit)
 
   console.dir({ quarter_data, intermediate_summaries }, { depth: null })

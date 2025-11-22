@@ -1,8 +1,11 @@
 import fs from "fs"
 import { PDFParse, TextResult } from "pdf-parse"
-import { IBankDetectionResult, ITransactionStatement } from "../types"
+import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
 import { normalizeMonobankTransactionStatement } from "../utils"
+import { calculateIntermediateSummaries, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
+import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
+import { calculateQuarterDataFromStatmentForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
 
 const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
 const MONOBANK_STATEMENT_UAH_UK_PATH = "./files/monobank_statement_uah_uk.pdf"
@@ -172,7 +175,17 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
     return
   }
 
-  const result = await parseStatementByBank(document, bank)
+  const transactions = await parseStatementByBank(document, bank)
 
-  console.dir(result, { depth: null })
+  const filteredTxn = transactions.filter((item) => item.operation_currency !== "UAH" && item.type === TransactionTypeEnum.CREDIT)
+  if (!filteredTxn.length) {
+    console.error("We couldn't find any credit transactions from this file.")
+    return
+  }
+
+  const quarters = getFopCreditsByQuarterFromStatement(filteredTxn)
+  const quarter_data = calculateQuarterDataFromStatmentForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
+  const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
+
+  console.dir({ transactions, quarter_data, intermediate_summaries }, { depth: null })
 })()
