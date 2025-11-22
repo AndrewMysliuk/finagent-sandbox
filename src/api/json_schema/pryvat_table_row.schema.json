@@ -1,0 +1,32 @@
+{
+  "type": "object",
+  "properties": {
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "document_number": { "type": ["string", "null"] },
+          "operation_datetime": { "type": "string" },
+          "amount": { "type": "number" },
+          "amount_currency": { "type": "string" },
+          "amount_uah_equivalent": { "type": ["number", "null"] },
+          "payment_details": { "type": "string" },
+          "counterparty_iban": { "type": ["string", "null"] }
+        },
+        "required": [
+          "document_number",
+          "operation_datetime",
+          "amount",
+          "amount_currency",
+          "amount_uah_equivalent",
+          "payment_details",
+          "counterparty_iban"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["transactions"],
+  "additionalProperties": false
+}

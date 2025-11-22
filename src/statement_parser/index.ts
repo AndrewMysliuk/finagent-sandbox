@@ -2,10 +2,11 @@ import fs from "fs"
 import { PDFParse, TextResult } from "pdf-parse"
 import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
-import { normalizeMonobankTransactionStatement } from "../utils"
+import { normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement } from "../utils"
 import { calculateIntermediateSummaries, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
 import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
 import { calculateQuarterDataFromStatmentForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
+import { parsePryvatbankStatement } from "./privatbank"
 
 const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
 const MONOBANK_STATEMENT_UAH_UK_PATH = "./files/monobank_statement_uah_uk.pdf"
@@ -66,6 +67,8 @@ export function fastCheckIsProbablyFinancial(document: TextResult): boolean {
     "виписка по рахунку",
     "виписка",
     "звітний період",
+    "виписка за період",
+    "заключна виписка",
     "період:",
     "баланс",
     "залишок",
@@ -103,10 +106,11 @@ export function detectBank(document: TextResult): IBankDetectionResult {
   const t = document.getPageText(1).toLowerCase()
 
   const monoHits = ["universal bank jsc", 'ат "універсал банк"']
+  const pryvatHits = ["приватбанк", 'ат кб "приватбанк"']
 
   const is_monobank = monoHits.some((k) => t.includes(k))
+  const is_privatbank = pryvatHits.some((k) => t.includes(k))
 
-  const is_privatbank = false // TODO
   const is_pumb = false // TODO
   const is_raiffeisen = false // TODO
   const is_ukrsib = false // TODO
@@ -132,12 +136,37 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
       return
     }
 
-    return rawData.map((item) => normalizeMonobankTransactionStatement(item))
+    const normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
+    const currencies = new Set(normalizeTxn.map((t) => t.operation_currency))
+    const filteredTxn = normalizeTxn.filter(
+      (t) => t.type === TransactionTypeEnum.CREDIT && (currencies.size === 0 || t.operation_currency !== "UAH")
+    )
+
+    if (!filteredTxn.length) {
+      console.error("We couldn't find any credit transactions from this file.")
+      return
+    }
+
+    return filteredTxn
   }
 
   if (bank.is_privatbank) {
-    // TODO
-    throw new Error("PrivatBank parser not implemented")
+    const rawData = await parsePryvatbankStatement(document)
+
+    if (!rawData.length) {
+      console.error("We couldn't read any transactions from this file.")
+      return
+    }
+
+    const normalizeTxn = rawData.map((item) => normalizePryvatbankTransactionStatement(item))
+    const filteredTxn = normalizeTxn.filter((t) => t.type === TransactionTypeEnum.CREDIT)
+
+    if (!filteredTxn.length) {
+      console.error("We couldn't find any credit transactions from this file.")
+      return
+    }
+
+    return filteredTxn
   }
 
   if (bank.is_pumb) {
@@ -160,7 +189,7 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
 
 // === Standalone ===
 ;(async () => {
-  const path = MONOBANK_STATEMENT_USD_EN_PATH
+  const path = MONOBANK_STATEMENT_USD_UK_PATH
   const document = await readPdf(path)
 
   if (!fastCheckIsProbablyFinancial(document)) {
@@ -169,7 +198,6 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
   }
 
   const bank = detectBank(document)
-
   if (bank.is_unknown) {
     console.error("We can't recognize this type of bank statement.")
     return
@@ -177,15 +205,11 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
 
   const transactions = await parseStatementByBank(document, bank)
 
-  const filteredTxn = transactions.filter((item) => item.operation_currency !== "UAH" && item.type === TransactionTypeEnum.CREDIT)
-  if (!filteredTxn.length) {
-    console.error("We couldn't find any credit transactions from this file.")
-    return
-  }
+  console.dir(transactions, { depth: null })
 
-  const quarters = getFopCreditsByQuarterFromStatement(filteredTxn)
+  const quarters = getFopCreditsByQuarterFromStatement(transactions)
   const quarter_data = calculateQuarterDataFromStatmentForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
   const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
 
-  console.dir({ transactions, quarter_data, intermediate_summaries }, { depth: null })
+  console.dir({ quarter_data, intermediate_summaries }, { depth: null })
 })()

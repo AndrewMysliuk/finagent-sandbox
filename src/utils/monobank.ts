@@ -65,5 +65,7 @@ export function normalizeMonobankTransactionStatement(tx: IMonobankTableRow): IT
     counterparty_name: tx.counterparty_name,
     counterparty_iban: tx.counterparty_iban,
     balance_after: tx.balance !== null ? Math.abs(tx.balance) : null,
+    is_financial_aid: false,
+    is_return: false,
   }
 }

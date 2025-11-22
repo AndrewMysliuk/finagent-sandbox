@@ -24,3 +24,17 @@ export interface IMonobankTableRow {
 export interface IMonobankStatementPageResponse {
   transactions: IMonobankTableRow[]
 }
+
+export interface IPryvatbankTableRow {
+  document_number: string | null
+  operation_datetime: string
+  amount: number
+  amount_currency: string
+  amount_uah_equivalent: number | null
+  payment_details: string
+  counterparty_iban: string | null
+}
+
+export interface IPryvatbankStatementPageResponse {
+  transactions: IPryvatbankTableRow[]
+}

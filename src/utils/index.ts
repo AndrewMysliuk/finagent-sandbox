@@ -1,3 +1,4 @@
 export * from "./consts"
 export * from "./helpers"
 export * from "./monobank"
+export * from "./pryvatbank"

@@ -33,7 +33,6 @@ Ukrainian:
 - "Залишок після операції"
 
 RULES:
-
 1. Start extracting transactions ONLY after the header row appears.
 2. Ignore the header itself and any formatting or separator lines.
 3. Each transaction begins with a date in the format DD.MM.YYYY.

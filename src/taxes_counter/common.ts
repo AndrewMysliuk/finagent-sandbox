@@ -60,10 +60,10 @@ export async function updateUAHRates(from: string): Promise<Record<string, numbe
 export function getFopCreditsByQuarterFromAPI(): Record<string, IQuarterAPIData> {
   const all_txs = getFopCreditTransactionsAPI()
 
-  const year_start = new Date(`${BASE_FOP_CONFIG.year}-01-01`)
+  const year = BASE_FOP_CONFIG.year
+  const yearStart = new Date(`${year}-01-01`)
   const now = new Date()
-
-  const filtered = all_txs.filter((tx) => new Date(tx.date) >= year_start)
+  const filtered = all_txs.filter((tx) => new Date(tx.date) >= yearStart)
 
   const quarters: Record<string, IQuarterAPIData> = {
     Q1: { transactions: [], is_closed: false },
@@ -74,26 +74,39 @@ export function getFopCreditsByQuarterFromAPI(): Record<string, IQuarterAPIData>
 
   for (const tx of filtered) {
     const month = new Date(tx.date).getMonth() + 1
+
     if (month <= 3) quarters.Q1.transactions.push(tx)
     else if (month <= 6) quarters.Q2.transactions.push(tx)
     else if (month <= 9) quarters.Q3.transactions.push(tx)
     else quarters.Q4.transactions.push(tx)
   }
 
-  const current_month = now.getMonth() + 1
-  if (current_month > 3) quarters.Q1.is_closed = true
-  if (current_month > 6) quarters.Q2.is_closed = true
-  if (current_month > 9) quarters.Q3.is_closed = true
-  if (current_month > 12) quarters.Q4.is_closed = true
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  if (currentYear > year) {
+    quarters.Q1.is_closed = true
+    quarters.Q2.is_closed = true
+    quarters.Q3.is_closed = true
+    quarters.Q4.is_closed = true
+    return quarters
+  }
+
+  quarters.Q1.is_closed = currentMonth > 3
+  quarters.Q2.is_closed = currentMonth > 6
+  quarters.Q3.is_closed = currentMonth > 9
+
+  quarters.Q4.is_closed = false
 
   return quarters
 }
 
 export function getFopCreditsByQuarterFromStatement(statement_txs: ITransactionStatement[]): Record<string, IQuarterStatementData> {
-  const year_start = new Date(`${BASE_FOP_CONFIG.year}-01-01`)
+  const year = BASE_FOP_CONFIG.year
+  const yearStart = new Date(`${year}-01-01`)
   const now = new Date()
 
-  const filtered = statement_txs.filter((tx) => new Date(tx.date) >= year_start)
+  const filtered = statement_txs.filter((tx) => new Date(tx.date) >= yearStart)
 
   const quarters: Record<string, IQuarterStatementData> = {
     Q1: { transactions: [], is_closed: false },
@@ -104,17 +117,29 @@ export function getFopCreditsByQuarterFromStatement(statement_txs: ITransactionS
 
   for (const tx of filtered) {
     const month = new Date(tx.date).getMonth() + 1
+
     if (month <= 3) quarters.Q1.transactions.push(tx)
     else if (month <= 6) quarters.Q2.transactions.push(tx)
     else if (month <= 9) quarters.Q3.transactions.push(tx)
     else quarters.Q4.transactions.push(tx)
   }
 
-  const current_month = now.getMonth() + 1
-  if (current_month > 3) quarters.Q1.is_closed = true
-  if (current_month > 6) quarters.Q2.is_closed = true
-  if (current_month > 9) quarters.Q3.is_closed = true
-  if (current_month > 12) quarters.Q4.is_closed = true
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  if (currentYear > year) {
+    quarters.Q1.is_closed = true
+    quarters.Q2.is_closed = true
+    quarters.Q3.is_closed = true
+    quarters.Q4.is_closed = true
+    return quarters
+  }
+
+  quarters.Q1.is_closed = currentMonth > 3
+  quarters.Q2.is_closed = currentMonth > 6
+  quarters.Q3.is_closed = currentMonth > 9
+
+  quarters.Q4.is_closed = false
 
   return quarters
 }

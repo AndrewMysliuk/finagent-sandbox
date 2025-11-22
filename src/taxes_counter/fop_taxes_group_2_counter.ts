@@ -49,12 +49,12 @@ export function calculateQuarterDataFromAPIForGroup2(
 }
 
 // === Standalone ===
-;(async () => {
-  const rates = await updateUAHRates("USD")
-  const quarters = getFopCreditsByQuarterFromAPI()
+// ;(async () => {
+//   const rates = await updateUAHRates("USD")
+//   const quarters = getFopCreditsByQuarterFromAPI()
 
-  const quarter_data = calculateQuarterDataFromAPIForGroup2(quarters, FOP_CONFIG_2025_GROUP_2, rates, false)
-  const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_2.income_limit)
+//   const quarter_data = calculateQuarterDataFromAPIForGroup2(quarters, FOP_CONFIG_2025_GROUP_2, rates, false)
+//   const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_2.income_limit)
 
-  console.dir({ quarter_data, intermediate_summaries }, { depth: null })
-})()
+//   console.dir({ quarter_data, intermediate_summaries }, { depth: null })
+// })()

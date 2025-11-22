@@ -40,4 +40,4 @@ export const ESV_MIN_QUARTERLY = 5280 // мінімальний ЄСВ за кв
 export const REPORTING_DEADLINE_DAYS = 40 // крайній термін подачі звіту, днів після кварталу
 export const PAYMENT_DEADLINE_DAYS = 50 // крайній термін сплати податків, днів після кварталу
 
-export const DISABLED_QUARTERS = ["Q4"]
+export const DISABLED_QUARTERS = [] // ["Q4"]

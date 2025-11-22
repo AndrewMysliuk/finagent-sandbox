@@ -28,4 +28,6 @@ export interface ITransactionStatement {
   counterparty_name: string | null
   counterparty_iban: string | null
   balance_after: number | null
+  is_financial_aid: boolean
+  is_return: boolean
 }
