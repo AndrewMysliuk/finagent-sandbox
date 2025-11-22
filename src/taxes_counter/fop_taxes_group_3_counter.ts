@@ -1,24 +1,15 @@
-import { IQuarterSummary, IIntermediateSummary } from "../types"
-import { DISABLED_QUARTERS, toMoneyFormat, safeAdd, fromMoneyFormat } from "../utils"
-import { updateUAHRates, getFopCreditsByQuarterFromAPI } from "./common"
+import { IQuarterSummary } from "../types"
+import { DISABLED_QUARTERS, toMoneyFormat, safeAdd } from "../utils"
+import { updateUAHRates, calculateIntermediateSummaries, getFopCreditsByQuarterFromAPI } from "./common"
 import { FOP_CONFIG_2025_GROUP_3, QUARTER_END_DATES, ESV_DEADLINES } from "./config"
 
-export async function calculateFopTaxesGroup3(closed_periods = false): Promise<{
-  quarter_data: Record<string, IQuarterSummary>
-  intermediate_summaries: Record<string, IIntermediateSummary>
-}> {
-  const cfg = FOP_CONFIG_2025_GROUP_3
-  const rates = await updateUAHRates("USD")
-  const quarters = getFopCreditsByQuarterFromAPI()
-
-  // QUARTER DATA
-
+function calculateQuarterDataGroup3(
+  quarters: ReturnType<typeof getFopCreditsByQuarterFromAPI>,
+  cfg: typeof FOP_CONFIG_2025_GROUP_3,
+  rates: Record<string, number>,
+  closed_periods: boolean
+): Record<string, IQuarterSummary> {
   const quarter_data: Record<string, IQuarterSummary> = {}
-
-  let total_income_raw = 0
-  let total_single_tax_raw = 0
-  let total_military_raw = 0
-  let total_esv_raw = 0
 
   for (const [key, data] of Object.entries(quarters)) {
     const should_calculate = closed_periods ? data.is_closed : true
@@ -34,11 +25,6 @@ export async function calculateFopTaxesGroup3(closed_periods = false): Promise<{
     const single_tax_raw = income_raw * cfg[cfg.is_vat_payer ? "single_tax_rate_vat" : "single_tax_rate_non_vat"]
     const military_raw = income_raw * cfg.military_tax_rate
     const esv_raw = cfg.esv_per_quarter
-
-    total_income_raw = safeAdd(total_income_raw, income_raw)
-    total_single_tax_raw = safeAdd(total_single_tax_raw, single_tax_raw)
-    total_military_raw = safeAdd(total_military_raw, military_raw)
-    total_esv_raw = safeAdd(total_esv_raw, esv_raw)
 
     const end = new Date(QUARTER_END_DATES[key as keyof typeof QUARTER_END_DATES])
     const report_deadline = new Date(end)
@@ -58,41 +44,16 @@ export async function calculateFopTaxesGroup3(closed_periods = false): Promise<{
     }
   }
 
-  // INTERMEDIATE SUMMARIES (Q1, Q1+Q2, Q1+Q2+Q3, Q1+Q2+Q3+Q4)
-
-  const intermediate_summaries: Record<string, IIntermediateSummary> = {}
-  const ordered = ["Q1", "Q2", "Q3", "Q4"]
-
-  let acc_income = 0
-  let acc_single = 0
-  let acc_military = 0
-  let acc_esv = 0
-
-  for (const q of ordered) {
-    const s = quarter_data[q]
-    if (!s) continue
-
-    acc_income = safeAdd(acc_income, fromMoneyFormat(s.total_income_uah))
-    acc_single = safeAdd(acc_single, fromMoneyFormat(s.single_tax_uah))
-    acc_military = safeAdd(acc_military, fromMoneyFormat(s.military_tax_uah))
-    acc_esv = safeAdd(acc_esv, fromMoneyFormat(s.esv_uah))
-
-    intermediate_summaries[q] = {
-      total_income_uah: toMoneyFormat(acc_income),
-      total_single_tax_uah: toMoneyFormat(acc_single),
-      total_military_tax_uah: toMoneyFormat(acc_military),
-      total_esv_uah: toMoneyFormat(acc_esv),
-      total_tax_load_percent: acc_income > 0 ? (((acc_single + acc_military + acc_esv) / acc_income) * 100).toFixed(2) + "%" : "0%",
-      income_limit_exceeded: acc_income > cfg.income_limit,
-    }
-  }
-
-  return { quarter_data, intermediate_summaries }
+  return quarter_data
 }
 
-// run
+// run standalone
 ;(async () => {
-  const result = await calculateFopTaxesGroup3()
+  const rates = await updateUAHRates("USD")
+  const quarters = getFopCreditsByQuarterFromAPI()
 
-  console.dir(result, { depth: null })
+  const quarter_data = calculateQuarterDataGroup3(quarters, FOP_CONFIG_2025_GROUP_3, rates, false)
+  const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
+
+  console.dir({ quarter_data, intermediate_summaries }, { depth: null })
 })()

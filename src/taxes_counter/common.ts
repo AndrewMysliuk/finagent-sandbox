@@ -1,7 +1,15 @@
 import fs from "fs"
 import path from "path"
-import { IQuarterAPIData, IQuarterStatementData, ITransactionAPI, ITransactionStatement, TransactionTypeEnum } from "../types"
-import { loadClientInfo, loadYearTransactions } from "../utils"
+import {
+  IIntermediateSummary,
+  IQuarterAPIData,
+  IQuarterStatementData,
+  IQuarterSummary,
+  ITransactionAPI,
+  ITransactionStatement,
+  TransactionTypeEnum,
+} from "../types"
+import { fromMoneyFormat, loadClientInfo, loadYearTransactions, safeAdd, toMoneyFormat } from "../utils"
 import { getUAHRate } from "../api"
 import { BASE_FOP_CONFIG } from "./config"
 
@@ -109,4 +117,38 @@ export function getFopCreditsByQuarterFromStatement(statement_txs: ITransactionS
   if (current_month > 12) quarters.Q4.is_closed = true
 
   return quarters
+}
+
+export function calculateIntermediateSummaries(
+  quarter_data: Record<string, IQuarterSummary>,
+  income_limit: number
+): Record<string, IIntermediateSummary> {
+  const result: Record<string, IIntermediateSummary> = {}
+  const ordered = ["Q1", "Q2", "Q3", "Q4"]
+
+  let acc_income = 0
+  let acc_single = 0
+  let acc_military = 0
+  let acc_esv = 0
+
+  for (const q of ordered) {
+    const s = quarter_data[q]
+    if (!s) continue
+
+    acc_income = safeAdd(acc_income, fromMoneyFormat(s.total_income_uah))
+    acc_single = safeAdd(acc_single, fromMoneyFormat(s.single_tax_uah))
+    acc_military = safeAdd(acc_military, fromMoneyFormat(s.military_tax_uah))
+    acc_esv = safeAdd(acc_esv, fromMoneyFormat(s.esv_uah))
+
+    result[q] = {
+      total_income_uah: toMoneyFormat(acc_income),
+      total_single_tax_uah: toMoneyFormat(acc_single),
+      total_military_tax_uah: toMoneyFormat(acc_military),
+      total_esv_uah: toMoneyFormat(acc_esv),
+      total_tax_load_percent: acc_income > 0 ? (((acc_single + acc_military + acc_esv) / acc_income) * 100).toFixed(2) + "%" : "0%",
+      income_limit_exceeded: acc_income > income_limit,
+    }
+  }
+
+  return result
 }
