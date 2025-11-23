@@ -1,11 +1,13 @@
 import fs from "fs"
+import { execFile } from "child_process"
+import path from "path"
 import { PDFParse, TextResult } from "pdf-parse"
 import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
 import { normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement } from "../utils"
-import { calculateIntermediateSummaries, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
+import { calculateIntermediateSummariesByYear, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
 import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
-import { calculateQuarterDataFromStatmentForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
+import { calculateQuarterDataFromStatementForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
 import { parsePryvatbankStatement } from "./privatbank"
 
 const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
@@ -24,6 +26,26 @@ export async function readPdf(path: string): Promise<TextResult> {
   const result = await parser.getText()
 
   return result
+}
+
+export async function parsePdf(pdfRelativePath: string): Promise<string[][]> {
+  const absPath = path.resolve(pdfRelativePath)
+
+  return new Promise((resolve, reject) => {
+    execFile("python3", ["./src/scripts/pdf_parser.py", absPath], { maxBuffer: 1024 * 1024 * 50 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(err)
+        return
+      }
+
+      try {
+        const data = JSON.parse(stdout)
+        resolve(data)
+      } catch (e) {
+        reject(e)
+      }
+    })
+  })
 }
 
 export function fastCheckIsProbablyFinancial(document: TextResult): boolean {
@@ -127,9 +149,13 @@ export function detectBank(document: TextResult): IBankDetectionResult {
   }
 }
 
-export async function parseStatementByBank(document: TextResult, bank: IBankDetectionResult): Promise<ITransactionStatement[]> {
+export async function parseStatementByBank(
+  raws: string[][],
+  document: TextResult,
+  bank: IBankDetectionResult
+): Promise<ITransactionStatement[]> {
   if (bank.is_monobank) {
-    const rawData = await parseMonobankStatement(document)
+    const rawData = await parseMonobankStatement(raws)
 
     if (!rawData.length) {
       console.error("We couldn't read any transactions from this file.")
@@ -137,10 +163,7 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
     }
 
     const normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
-    const currencies = new Set(normalizeTxn.map((t) => t.operation_currency))
-    const filteredTxn = normalizeTxn.filter(
-      (t) => t.type === TransactionTypeEnum.CREDIT && (currencies.size === 0 || t.operation_currency !== "UAH")
-    )
+    const filteredTxn = normalizeTxn.filter((t) => t.type === TransactionTypeEnum.CREDIT)
 
     if (!filteredTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
@@ -151,7 +174,7 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
   }
 
   if (bank.is_privatbank) {
-    const rawData = await parsePryvatbankStatement(document)
+    const rawData = await parsePryvatbankStatement(raws, document)
 
     if (!rawData.length) {
       console.error("We couldn't read any transactions from this file.")
@@ -189,8 +212,9 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
 
 // === Standalone ===
 ;(async () => {
-  const path = MONOBANK_STATEMENT_USD_UK_PATH
-  const document = await readPdf(path)
+  const filePath = MONOBANK_STATEMENT_USD_EN_PATH
+
+  const document = await readPdf(filePath)
 
   if (!fastCheckIsProbablyFinancial(document)) {
     console.error("This file doesn’t look like a bank statement.")
@@ -203,13 +227,13 @@ export async function parseStatementByBank(document: TextResult, bank: IBankDete
     return
   }
 
-  const transactions = await parseStatementByBank(document, bank)
+  const rows = await parsePdf(filePath)
 
-  console.dir(transactions, { depth: null })
-
+  const transactions = await parseStatementByBank(rows, document, bank)
   const quarters = getFopCreditsByQuarterFromStatement(transactions)
-  const quarter_data = calculateQuarterDataFromStatmentForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
-  const intermediate_summaries = calculateIntermediateSummaries(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
+
+  const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
+  const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
 
   console.dir({ quarter_data, intermediate_summaries }, { depth: null })
 })()

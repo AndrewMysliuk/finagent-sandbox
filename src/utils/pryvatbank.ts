@@ -6,10 +6,6 @@ export function normalizePryvatbankTransactionStatement(tx: IPryvatbankTableRow)
   const amount = Math.abs(tx.amount)
   let amountEquivalent = tx.amount_uah_equivalent !== null ? Math.abs(tx.amount_uah_equivalent) : amount
 
-  if (tx.amount_currency === "UAH" && (tx.amount_uah_equivalent === null || amount > amountEquivalent)) {
-    amountEquivalent = amount
-  }
-
   return {
     date: tx.operation_datetime,
     description: tx.payment_details,

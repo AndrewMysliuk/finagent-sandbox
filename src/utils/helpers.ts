@@ -23,6 +23,27 @@ export const toMoneyFormat = (value: number): string => {
 // From format number with thousand separators and 2 decimals
 export const fromMoneyFormat = (value: string): number => parseFloat(value.replace(/,/g, "")) || 0
 
+export const cleanNumber = (str: string | null): number | null => {
+  if (!str) return null
+  const s = str.replace(/\s+/g, "")
+  if (s === "—") return null
+  const n = parseFloat(s)
+  return isNaN(n) ? null : n
+}
+
+export function parseDateTimeDDMMYYYY(str: string): string {
+  const cleaned = str.replace(/\s+/g, " ").trim()
+  const [datePart, timePart = "00:00:00"] = cleaned.split(" ")
+
+  const [day, month, year] = datePart.split(".").map(Number)
+
+  const yyyy = year.toString().padStart(4, "0")
+  const mm = month.toString().padStart(2, "0")
+  const dd = day.toString().padStart(2, "0")
+
+  return `${yyyy}-${mm}-${dd} ${timePart}`
+}
+
 // Load MCC codes dictionary
 export const loadMccDictionary = (): Record<number, string> => {
   const filePath = path.resolve(process.cwd(), "dictionaries", "mcc_codes.json")

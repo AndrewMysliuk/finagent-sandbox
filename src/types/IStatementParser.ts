@@ -21,10 +21,6 @@ export interface IMonobankTableRow {
   balance: number | null
 }
 
-export interface IMonobankStatementPageResponse {
-  transactions: IMonobankTableRow[]
-}
-
 export interface IPryvatbankTableRow {
   document_number: string | null
   operation_datetime: string
@@ -33,8 +29,4 @@ export interface IPryvatbankTableRow {
   amount_uah_equivalent: number | null
   payment_details: string
   counterparty_iban: string | null
-}
-
-export interface IPryvatbankStatementPageResponse {
-  transactions: IPryvatbankTableRow[]
 }

@@ -52,7 +52,7 @@ export function normalizeMonobankTransactionStatement(tx: IMonobankTableRow): IT
   const isCredit = tx.operation_amount > 0
 
   const amount = Math.abs(tx.operation_amount)
-  const amountEquivalent = tx.amount_nbu_exchange_rate_equivalent !== null ? Math.abs(tx.amount_nbu_exchange_rate_equivalent) : null
+  const amountEquivalent = tx.amount_nbu_exchange_rate_equivalent !== null ? Math.abs(tx.amount_nbu_exchange_rate_equivalent) : amount
 
   return {
     date: tx.date_and_time,

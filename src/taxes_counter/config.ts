@@ -11,32 +11,16 @@ import {
   REPORTING_DEADLINE_DAYS,
   TAX_RATE_GROUP_3_NON_VAT,
   TAX_RATE_GROUP_3_VAT,
-  YEAR,
 } from "../utils"
 
 // === FOP config ===
 export const BASE_FOP_CONFIG = {
-  year: YEAR,
   is_vat_payer: false,
   currency: "USD",
   esv_rate: ESV_RATE,
   esv_per_quarter: ESV_MIN_QUARTERLY,
   reporting_deadline_days: REPORTING_DEADLINE_DAYS,
   payment_deadline_days: PAYMENT_DEADLINE_DAYS,
-}
-
-export const QUARTER_END_DATES = {
-  Q1: `${BASE_FOP_CONFIG.year}-03-31`,
-  Q2: `${BASE_FOP_CONFIG.year}-06-30`,
-  Q3: `${BASE_FOP_CONFIG.year}-09-30`,
-  Q4: `${BASE_FOP_CONFIG.year}-12-31`,
-}
-
-export const ESV_DEADLINES = {
-  Q1: `${BASE_FOP_CONFIG.year}-04-20`,
-  Q2: `${BASE_FOP_CONFIG.year}-07-20`,
-  Q3: `${BASE_FOP_CONFIG.year}-10-20`,
-  Q4: `${BASE_FOP_CONFIG.year + 1}-01-20`,
 }
 
 export const FOP_CONFIG_2025_GROUP_1 = {
@@ -65,4 +49,34 @@ export const FOP_CONFIG_2025_GROUP_3 = {
   single_tax_rate_vat: TAX_RATE_GROUP_3_VAT,
   military_tax_rate: MILITARY_TAX_RATE,
   is_vat_payer: false,
+}
+
+export function getQuarterEndDate(year: number, quarter: string): string {
+  switch (quarter) {
+    case "Q1":
+      return `${year}-03-31`
+    case "Q2":
+      return `${year}-06-30`
+    case "Q3":
+      return `${year}-09-30`
+    case "Q4":
+      return `${year}-12-31`
+    default:
+      throw new Error("Invalid quarter")
+  }
+}
+
+export function getEsvDeadline(year: number, quarter: string): string {
+  switch (quarter) {
+    case "Q1":
+      return `${year}-04-20`
+    case "Q2":
+      return `${year}-07-20`
+    case "Q3":
+      return `${year}-10-20`
+    case "Q4":
+      return `${year + 1}-01-20`
+    default:
+      throw new Error("Invalid quarter")
+  }
 }

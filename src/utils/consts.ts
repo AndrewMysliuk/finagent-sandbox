@@ -8,7 +8,6 @@ export const CURRENCY_CODES: Record<number, string> = {
 }
 
 // === базові економічні константи ===
-export const YEAR = 2025 // поточний рік розрахунку
 export const MINIMUM_WAGE = 8000 // мінімальна заробітна плата, грн/міс
 export const LIVING_WAGE = 3028 // прожитковий мінімум, грн/міс
 export const ESV_RATE = 0.22 // ставка ЄСВ (єдиний соціальний внесок)
