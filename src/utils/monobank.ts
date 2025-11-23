@@ -45,6 +45,8 @@ export function normalizeMonobankTransactionAPI(tx: any, accountCurrency: string
     cross_currency: isCrossCurrency,
     mcc: tx.mcc,
     balance_after: roundCents(Math.abs(tx.balance)),
+    is_financial_aid: false,
+    is_return: false,
   }
 }
 

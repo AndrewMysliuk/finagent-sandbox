@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
-import { IClientInfo, ITransactionAPI } from "../types"
+import { IClientInfo, ITransactionAPI, ITransactionStatement, TransactionTypeEnum } from "../types"
+import { FIN_AID_KEYWORDS, RETURN_KEYWORDS } from "./consts"
 
 export const roundCents = (value: number = 0) => {
   return Math.round((value / 100) * 100) / 100
@@ -13,6 +14,10 @@ export const sleep = (ms: number): Promise<void> => {
 // Safe add with rounding to 2 decimals using integer cents
 export const safeAdd = (a: number, b: number): number => {
   return (Math.round(a * 100) + Math.round(b * 100)) / 100
+}
+
+export const safeSubtract = (a: number, b: number): number => {
+  return (Math.round(a * 100) - Math.round(b * 100)) / 100
 }
 
 // To format number with thousand separators and 2 decimals
@@ -42,6 +47,36 @@ export function parseDateTimeDDMMYYYY(str: string): string {
   const dd = day.toString().padStart(2, "0")
 
   return `${yyyy}-${mm}-${dd} ${timePart}`
+}
+
+// Check Refund and Financial Help ITransactionAPI
+export function detectFlagsForTxnApi(statements: ITransactionAPI[]): ITransactionAPI[] {
+  return statements.map((tx) => {
+    const text = (tx.description || "").toLowerCase()
+    const is_financial_aid = tx.type === TransactionTypeEnum.CREDIT && FIN_AID_KEYWORDS.some((k) => text.includes(k))
+    const is_return = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
+
+    return {
+      ...tx,
+      is_financial_aid,
+      is_return,
+    }
+  })
+}
+
+// Check Refund and Financial Help ITransactionStatement
+export function detectFlagsForTxnStatements(statements: ITransactionStatement[]): ITransactionStatement[] {
+  return statements.map((tx) => {
+    const text = (tx.description || "").toLowerCase()
+    const is_financial_aid = tx.type === TransactionTypeEnum.CREDIT && FIN_AID_KEYWORDS.some((k) => text.includes(k))
+    const is_return = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
+
+    return {
+      ...tx,
+      is_financial_aid,
+      is_return,
+    }
+  })
 }
 
 // Load MCC codes dictionary

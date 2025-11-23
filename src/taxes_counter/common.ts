@@ -9,7 +9,7 @@ import {
   ITransactionStatement,
   TransactionTypeEnum,
 } from "../types"
-import { fromMoneyFormat, loadClientInfo, loadYearTransactions, safeAdd, toMoneyFormat } from "../utils"
+import { detectFlagsForTxnApi, fromMoneyFormat, loadClientInfo, loadYearTransactions, safeAdd, toMoneyFormat } from "../utils"
 import { getUAHRate } from "../api"
 import { BASE_FOP_CONFIG } from "./config"
 
@@ -58,7 +58,8 @@ export async function updateUAHRates(from: string): Promise<Record<string, numbe
 }
 
 export function getFopCreditsByQuarterFromAPI(): Record<number, Record<string, IQuarterAPIData>> {
-  const txs = getFopCreditTransactionsAPI()
+  let txs = getFopCreditTransactionsAPI()
+  txs = detectFlagsForTxnApi(txs)
 
   const result: Record<number, Record<string, IQuarterAPIData>> = {}
 

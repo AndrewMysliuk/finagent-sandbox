@@ -15,6 +15,8 @@ export interface ITransactionAPI {
   cross_currency: boolean
   mcc: number
   balance_after: number
+  is_financial_aid: boolean
+  is_return: boolean
 }
 
 export interface ITransactionStatement {

@@ -1,5 +1,5 @@
-import { IQuarterAPIData, IQuarterSummary } from "../types"
-import { DISABLED_QUARTERS, toMoneyFormat, safeAdd } from "../utils"
+import { IQuarterAPIData, IQuarterSummary, TransactionTypeEnum } from "../types"
+import { DISABLED_QUARTERS, toMoneyFormat, safeAdd, safeSubtract } from "../utils"
 import { updateUAHRates, getFopCreditsByQuarterFromAPI, calculateIntermediateSummariesByYear } from "./common"
 import { FOP_CONFIG_2025_GROUP_2, getQuarterEndDate, getEsvDeadline } from "./config"
 
@@ -21,11 +21,29 @@ export function calculateQuarterDataFromAPIForGroup2(
       const should_calc = closed_periods ? data.is_closed : true
       if (!should_calc || DISABLED_QUARTERS.includes(quarter)) continue
 
-      const income_raw = data.transactions.reduce((sum, tx) => {
+      let income_raw = 0
+      for (const tx of data.transactions) {
         const date = tx.date.slice(0, 10)
         const rate = rates[date] || 0
-        return safeAdd(sum, tx.amount_in_account_currency * rate)
-      }, 0)
+
+        const amountUAH = safeAdd(0, tx.amount_in_account_currency * rate)
+
+        if (tx.type === TransactionTypeEnum.CREDIT) {
+          income_raw = safeAdd(income_raw, amountUAH)
+          continue
+        }
+
+        if (tx.type === TransactionTypeEnum.DEBIT) {
+          income_raw = safeSubtract(income_raw, amountUAH)
+          continue
+        }
+      }
+
+      if (income_raw < 0) {
+        throw new Error(
+          `Quarter ${quarter} of ${year} produced negative income (${income_raw}). Probably too many DEBIT returns or wrong classification.`
+        )
+      }
 
       const single_tax_raw = cfg.single_tax_monthly_max * 3
       const military_raw = 0

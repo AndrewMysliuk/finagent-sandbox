@@ -4,7 +4,7 @@ import path from "path"
 import { PDFParse, TextResult } from "pdf-parse"
 import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
-import { normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement } from "../utils"
+import { detectFlagsForTxnStatements, normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement } from "../utils"
 import { calculateIntermediateSummariesByYear, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
 import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
 import { calculateQuarterDataFromStatementForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
@@ -162,15 +162,18 @@ export async function parseStatementByBank(
       return
     }
 
-    const normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
-    const filteredTxn = normalizeTxn.filter((t) => t.type === TransactionTypeEnum.CREDIT)
+    let normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
+    normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
+    normalizeTxn = normalizeTxn.filter(
+      (t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid) || (t.type === TransactionTypeEnum.DEBIT && t.is_return)
+    )
 
-    if (!filteredTxn.length) {
+    if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
       return
     }
 
-    return filteredTxn
+    return normalizeTxn
   }
 
   if (bank.is_privatbank) {
@@ -181,15 +184,18 @@ export async function parseStatementByBank(
       return
     }
 
-    const normalizeTxn = rawData.map((item) => normalizePryvatbankTransactionStatement(item))
-    const filteredTxn = normalizeTxn.filter((t) => t.type === TransactionTypeEnum.CREDIT)
+    let normalizeTxn = rawData.map((item) => normalizePryvatbankTransactionStatement(item))
+    normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
+    normalizeTxn = normalizeTxn.filter(
+      (t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid) || (t.type === TransactionTypeEnum.DEBIT && t.is_return)
+    )
 
-    if (!filteredTxn.length) {
+    if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
       return
     }
 
-    return filteredTxn
+    return normalizeTxn
   }
 
   if (bank.is_pumb) {
@@ -215,7 +221,6 @@ export async function parseStatementByBank(
   const filePath = MONOBANK_STATEMENT_USD_EN_PATH
 
   const document = await readPdf(filePath)
-
   if (!fastCheckIsProbablyFinancial(document)) {
     console.error("This file doesn’t look like a bank statement.")
     return
@@ -228,10 +233,8 @@ export async function parseStatementByBank(
   }
 
   const rows = await parsePdf(filePath)
-
   const transactions = await parseStatementByBank(rows, document, bank)
   const quarters = getFopCreditsByQuarterFromStatement(transactions)
-
   const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
   const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
 

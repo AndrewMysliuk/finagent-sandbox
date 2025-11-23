@@ -1,5 +1,5 @@
-import { IQuarterAPIData, IQuarterStatementData, IQuarterSummary } from "../types"
-import { DISABLED_QUARTERS, toMoneyFormat, safeAdd } from "../utils"
+import { IQuarterAPIData, IQuarterStatementData, IQuarterSummary, TransactionTypeEnum } from "../types"
+import { DISABLED_QUARTERS, toMoneyFormat, safeAdd, safeSubtract } from "../utils"
 import { updateUAHRates, calculateIntermediateSummariesByYear, getFopCreditsByQuarterFromAPI } from "./common"
 import { FOP_CONFIG_2025_GROUP_3, getQuarterEndDate, getEsvDeadline } from "./config"
 
@@ -26,7 +26,24 @@ export function calculateQuarterDataFromAPIForGroup3(
       for (const tx of data.transactions) {
         const dateISO = new Date(tx.date).toISOString().split("T")[0]
         const rate = rates[dateISO] || 0
-        income_raw = safeAdd(income_raw, tx.amount_in_account_currency * rate)
+
+        const amountUAH = safeAdd(0, tx.amount_in_account_currency * rate)
+
+        if (tx.type === TransactionTypeEnum.CREDIT) {
+          income_raw = safeAdd(income_raw, amountUAH)
+          continue
+        }
+
+        if (tx.type === TransactionTypeEnum.DEBIT) {
+          income_raw = safeSubtract(income_raw, amountUAH)
+          continue
+        }
+      }
+
+      if (income_raw < 0) {
+        throw new Error(
+          `Quarter ${quarter} of ${year} produced negative income (${income_raw}). Probably too many DEBIT returns or wrong classification.`
+        )
       }
 
       const single_tax_raw = income_raw * cfg[cfg.is_vat_payer ? "single_tax_rate_vat" : "single_tax_rate_non_vat"]
@@ -79,7 +96,21 @@ export function calculateQuarterDataFromStatementForGroup3(
       let income_raw = 0
 
       for (const tx of data.transactions) {
-        income_raw = safeAdd(income_raw, tx.amount_nbu_exchange_rate_equivalent)
+        if (tx.type === TransactionTypeEnum.CREDIT) {
+          income_raw = safeAdd(income_raw, tx.amount_nbu_exchange_rate_equivalent)
+          continue
+        }
+
+        if (tx.type === TransactionTypeEnum.DEBIT) {
+          income_raw = safeSubtract(income_raw, tx.amount_nbu_exchange_rate_equivalent)
+          continue
+        }
+      }
+
+      if (income_raw < 0) {
+        throw new Error(
+          `Quarter ${quarter} of ${year} produced negative income (${income_raw}). Probably too many DEBIT returns or wrong classification.`
+        )
       }
 
       const single_tax_raw = income_raw * cfg[cfg.is_vat_payer ? "single_tax_rate_vat" : "single_tax_rate_non_vat"]
