@@ -46,7 +46,8 @@ export function normalizeMonobankTransactionAPI(tx: any, accountCurrency: string
     mcc: tx.mcc,
     balance_after: roundCents(Math.abs(tx.balance)),
     is_financial_aid: false,
-    is_return: false,
+    is_refund: false,
+    is_fx_sale: false,
   }
 }
 
@@ -68,6 +69,7 @@ export function normalizeMonobankTransactionStatement(tx: IMonobankTableRow): IT
     counterparty_iban: tx.counterparty_iban,
     balance_after: tx.balance !== null ? Math.abs(tx.balance) : null,
     is_financial_aid: false,
-    is_return: false,
+    is_refund: false,
+    is_fx_sale: false,
   }
 }

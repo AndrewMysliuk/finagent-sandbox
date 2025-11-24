@@ -4,11 +4,17 @@ import path from "path"
 import { PDFParse, TextResult } from "pdf-parse"
 import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
-import { detectFlagsForTxnStatements, normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement } from "../utils"
+import {
+  detectFlagsForTxnStatements,
+  normalizeMonobankTransactionStatement,
+  normalizePryvatbankTransactionStatement,
+  normalizeUkrsibbankTransactionStatement,
+} from "../utils"
 import { calculateIntermediateSummariesByYear, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
 import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
 import { calculateQuarterDataFromStatementForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
 import { parsePryvatbankStatement } from "./privatbank"
+import { parseUkrsibbankStatement } from "./ukrsibbank"
 
 const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
 const MONOBANK_STATEMENT_UAH_UK_PATH = "./files/monobank_statement_uah_uk.pdf"
@@ -17,6 +23,7 @@ const MONOBANK_STATEMENT_USD_UK_PATH = "./files/monobank_statement_usd_uk.pdf"
 const WISE_STATEMENT_EUR_EN_PATH = "./files/wise_statement_eur_en.pdf"
 const PRYVAT_STATEMENT_GBP_UK_PATH = "./files/pryvat_statement_gbp_uk.pdf"
 const PRYVAT_STATEMENT_UAH_UK_PATH = "./files/pryvat_statement_uah_uk.pdf"
+const UKRSIB_STATEMENT_UAH_UK_PATH = "./files/ukrsib_statement_uah_uk.pdf"
 const INVOICE_PATH = "./files/invoice.pdf"
 
 export async function readPdf(path: string): Promise<TextResult> {
@@ -125,17 +132,19 @@ export function fastCheckIsProbablyFinancial(document: TextResult): boolean {
 }
 
 export function detectBank(document: TextResult): IBankDetectionResult {
-  const t = document.getPageText(1).toLowerCase()
+  const raw = document.getPageText(1).toLowerCase()
+  const t = raw.slice(0, 200)
 
   const monoHits = ["universal bank jsc", 'ат "універсал банк"']
   const pryvatHits = ["приватбанк", 'ат кб "приватбанк"']
+  const ukrsibHits = ["укрсиббанк", "ukrsibbank", "ат «укрсиббанк»"]
 
   const is_monobank = monoHits.some((k) => t.includes(k))
   const is_privatbank = pryvatHits.some((k) => t.includes(k))
+  const is_ukrsib = ukrsibHits.some((k) => t.includes(k))
 
   const is_pumb = false // TODO
   const is_raiffeisen = false // TODO
-  const is_ukrsib = false // TODO
 
   const is_unknown = !is_monobank && !is_privatbank && !is_pumb && !is_raiffeisen && !is_ukrsib
 
@@ -165,7 +174,9 @@ export async function parseStatementByBank(
     let normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
     normalizeTxn = normalizeTxn.filter(
-      (t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid) || (t.type === TransactionTypeEnum.DEBIT && t.is_return)
+      (t) =>
+        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
+        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
     )
 
     if (!normalizeTxn.length) {
@@ -187,7 +198,9 @@ export async function parseStatementByBank(
     let normalizeTxn = rawData.map((item) => normalizePryvatbankTransactionStatement(item))
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
     normalizeTxn = normalizeTxn.filter(
-      (t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid) || (t.type === TransactionTypeEnum.DEBIT && t.is_return)
+      (t) =>
+        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
+        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
     )
 
     if (!normalizeTxn.length) {
@@ -209,8 +222,29 @@ export async function parseStatementByBank(
   }
 
   if (bank.is_ukrsib) {
-    // TODO
-    throw new Error("Ukrsib parser not implemented")
+    const rawData = await parseUkrsibbankStatement(raws, document)
+
+    if (!rawData.length) {
+      console.error("We couldn't read any transactions from this file.")
+      return
+    }
+
+    let normalizeTxn = rawData.map((item) => normalizeUkrsibbankTransactionStatement(item))
+    normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
+    normalizeTxn = normalizeTxn.filter(
+      (t) =>
+        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
+        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
+    )
+
+    console.dir(normalizeTxn, { depth: null })
+
+    if (!normalizeTxn.length) {
+      console.error("We couldn't find any credit transactions from this file.")
+      return
+    }
+
+    return normalizeTxn
   }
 
   throw new Error("Unknown bank: no parser available")
@@ -218,7 +252,7 @@ export async function parseStatementByBank(
 
 // === Standalone ===
 ;(async () => {
-  const filePath = MONOBANK_STATEMENT_USD_EN_PATH
+  const filePath = UKRSIB_STATEMENT_UAH_UK_PATH
 
   const document = await readPdf(filePath)
   if (!fastCheckIsProbablyFinancial(document)) {

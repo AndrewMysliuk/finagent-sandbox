@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { IClientInfo, ITransactionAPI, ITransactionStatement, TransactionTypeEnum } from "../types"
-import { FIN_AID_KEYWORDS, RETURN_KEYWORDS } from "./consts"
+import { FIN_AID_KEYWORDS, FX_SALE_KEYWORDS, RETURN_KEYWORDS } from "./consts"
 
 export const roundCents = (value: number = 0) => {
   return Math.round((value / 100) * 100) / 100
@@ -30,8 +30,9 @@ export const fromMoneyFormat = (value: string): number => parseFloat(value.repla
 
 export const cleanNumber = (str: string | null): number | null => {
   if (!str) return null
-  const s = str.replace(/\s+/g, "")
-  if (s === "—") return null
+  let s = str.replace(/\s+/g, "").trim()
+  if (s === "—" || s === "-") return null
+  s = s.replace(",", ".")
   const n = parseFloat(s)
   return isNaN(n) ? null : n
 }
@@ -54,12 +55,14 @@ export function detectFlagsForTxnApi(statements: ITransactionAPI[]): ITransactio
   return statements.map((tx) => {
     const text = (tx.description || "").toLowerCase()
     const is_financial_aid = tx.type === TransactionTypeEnum.CREDIT && FIN_AID_KEYWORDS.some((k) => text.includes(k))
-    const is_return = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
+    const is_fx_sale = tx.type === TransactionTypeEnum.CREDIT && FX_SALE_KEYWORDS.some((k) => text.includes(k))
+    const is_refund = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
 
     return {
       ...tx,
       is_financial_aid,
-      is_return,
+      is_fx_sale,
+      is_refund,
     }
   })
 }
@@ -69,12 +72,14 @@ export function detectFlagsForTxnStatements(statements: ITransactionStatement[])
   return statements.map((tx) => {
     const text = (tx.description || "").toLowerCase()
     const is_financial_aid = tx.type === TransactionTypeEnum.CREDIT && FIN_AID_KEYWORDS.some((k) => text.includes(k))
-    const is_return = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
+    const is_fx_sale = tx.type === TransactionTypeEnum.CREDIT && FX_SALE_KEYWORDS.some((k) => text.includes(k))
+    const is_refund = tx.type === TransactionTypeEnum.DEBIT && RETURN_KEYWORDS.some((k) => text.includes(k))
 
     return {
       ...tx,
       is_financial_aid,
-      is_return,
+      is_fx_sale,
+      is_refund,
     }
   })
 }

@@ -16,7 +16,8 @@ export interface ITransactionAPI {
   mcc: number
   balance_after: number
   is_financial_aid: boolean
-  is_return: boolean
+  is_refund: boolean
+  is_fx_sale: boolean
 }
 
 export interface ITransactionStatement {
@@ -31,5 +32,6 @@ export interface ITransactionStatement {
   counterparty_iban: string | null
   balance_after: number | null
   is_financial_aid: boolean
-  is_return: boolean
+  is_refund: boolean
+  is_fx_sale: boolean
 }

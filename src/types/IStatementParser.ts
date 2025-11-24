@@ -30,3 +30,14 @@ export interface IPryvatbankTableRow {
   payment_details: string
   counterparty_iban: string | null
 }
+
+export interface IUkrsibbankTableRow {
+  operation_datetime: string
+  document_number: string | null
+  debit: number | null
+  credit: number | null
+  counterparty_details: string | null
+  payment_details: string
+  account_currency: string
+  counterparty_iban: string | null
+}

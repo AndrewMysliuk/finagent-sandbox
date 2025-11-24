@@ -4,19 +4,6 @@ import { cleanNumber, parseDateTimeDDMMYYYY } from "../utils"
 const UA_HEADER_FIRST = "Дата та час"
 const EN_HEADER_FIRST = "Date and time"
 
-function parseMonoDate(str: string): string {
-  const cleaned = str.replace(/\s+/g, " ").trim()
-  const [datePart, timePart] = cleaned.split(" ")
-
-  const [day, month, year] = datePart.split(".").map(Number)
-
-  const yyyy = year.toString().padStart(4, "0")
-  const mm = month.toString().padStart(2, "0")
-  const dd = day.toString().padStart(2, "0")
-
-  return `${yyyy}-${mm}-${dd} ${timePart}`
-}
-
 export function parseMonobankStatement(rows: string[][]): IMonobankTableRow[] {
   const body = rows.filter((cols) => {
     const first = cols?.[0]?.trim()

@@ -18,6 +18,7 @@ export function normalizePryvatbankTransactionStatement(tx: IPryvatbankTableRow)
     counterparty_iban: tx.counterparty_iban,
     balance_after: null,
     is_financial_aid: false,
-    is_return: false,
+    is_refund: false,
+    is_fx_sale: false,
   }
 }
