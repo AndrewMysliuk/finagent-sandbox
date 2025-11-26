@@ -1,4 +1,4 @@
-import { IPryvatbankTableRow, ITransactionStatement, TransactionTypeEnum } from "../types"
+import { IPryvatbankTableRow, ITransactionStatement, TransactionSourceEnum, TransactionTypeEnum } from "../types"
 
 export function normalizePryvatbankTransactionStatement(tx: IPryvatbankTableRow): ITransactionStatement {
   const isCredit = tx.amount > 0
@@ -17,6 +17,7 @@ export function normalizePryvatbankTransactionStatement(tx: IPryvatbankTableRow)
     counterparty_name: null,
     counterparty_iban: tx.counterparty_iban,
     balance_after: null,
+    source: TransactionSourceEnum.STATEMENT,
     is_financial_aid: false,
     is_refund: false,
     is_fx_sale: false,

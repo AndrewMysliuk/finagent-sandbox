@@ -3,6 +3,11 @@ export enum TransactionTypeEnum {
   CREDIT = "CREDIT",
 }
 
+export enum TransactionSourceEnum {
+  STATEMENT = "STATEMENT",
+  MANUAL = "MANUAL",
+}
+
 export interface ITransactionAPI {
   id: string
   date: string
@@ -31,6 +36,7 @@ export interface ITransactionStatement {
   counterparty_name: string | null
   counterparty_iban: string | null
   balance_after: number | null
+  source: TransactionSourceEnum
   is_financial_aid: boolean
   is_refund: boolean
   is_fx_sale: boolean

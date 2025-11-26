@@ -1,4 +1,4 @@
-import { IMonobankTableRow, ITransactionAPI, ITransactionStatement, TransactionTypeEnum } from "../types"
+import { IMonobankTableRow, ITransactionAPI, ITransactionStatement, TransactionSourceEnum, TransactionTypeEnum } from "../types"
 import { CURRENCY_CODES } from "./consts"
 import { roundCents } from "./helpers"
 
@@ -68,6 +68,7 @@ export function normalizeMonobankTransactionStatement(tx: IMonobankTableRow): IT
     counterparty_name: tx.counterparty_name,
     counterparty_iban: tx.counterparty_iban,
     balance_after: tx.balance !== null ? Math.abs(tx.balance) : null,
+    source: TransactionSourceEnum.STATEMENT,
     is_financial_aid: false,
     is_refund: false,
     is_fx_sale: false,
