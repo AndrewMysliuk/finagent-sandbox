@@ -172,6 +172,9 @@ export async function parseStatementByBank(
     }
 
     let normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
+
+    console.dir(normalizeTxn, { depth: null })
+
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
     normalizeTxn = normalizeTxn.filter(
       (t) =>
@@ -236,9 +239,6 @@ export async function parseStatementByBank(
         (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
         (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
     )
-
-    console.dir(normalizeTxn, { depth: null })
-
     if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
       return
@@ -252,7 +252,7 @@ export async function parseStatementByBank(
 
 // === Standalone ===
 ;(async () => {
-  const filePath = UKRSIB_STATEMENT_UAH_UK_PATH
+  const filePath = MONOBANK_STATEMENT_USD_UK_PATH
 
   const document = await readPdf(filePath)
   if (!fastCheckIsProbablyFinancial(document)) {
@@ -268,9 +268,9 @@ export async function parseStatementByBank(
 
   const rows = await parsePdf(filePath)
   const transactions = await parseStatementByBank(rows, document, bank)
-  const quarters = getFopCreditsByQuarterFromStatement(transactions)
-  const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
-  const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
+  // const quarters = getFopCreditsByQuarterFromStatement(transactions)
+  // const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
+  // const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
 
-  console.dir({ quarter_data, intermediate_summaries }, { depth: null })
+  // console.dir({ quarter_data, intermediate_summaries }, { depth: null })
 })()

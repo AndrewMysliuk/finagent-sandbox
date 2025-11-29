@@ -64,6 +64,7 @@ export function normalizeMonobankTransactionStatement(tx: IMonobankTableRow): IT
     amount_in_operation_currency: amount,
     operation_currency: tx.currency,
     amount_nbu_exchange_rate_equivalent: amountEquivalent,
+    nbu_currency: tx.nbu_currency,
     exchange_rate: tx.exchange_rate,
     counterparty_name: tx.counterparty_name,
     counterparty_iban: tx.counterparty_iban,

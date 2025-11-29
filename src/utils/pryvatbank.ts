@@ -13,6 +13,7 @@ export function normalizePryvatbankTransactionStatement(tx: IPryvatbankTableRow)
     amount_in_operation_currency: amount,
     operation_currency: tx.amount_currency,
     amount_nbu_exchange_rate_equivalent: amountEquivalent,
+    nbu_currency: "UAH",
     exchange_rate: null,
     counterparty_name: null,
     counterparty_iban: tx.counterparty_iban,

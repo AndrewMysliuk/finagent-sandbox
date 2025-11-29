@@ -15,6 +15,19 @@ export function parseMonobankStatement(rows: string[][]): IMonobankTableRow[] {
     return !isHeader && cols.length === 9
   })
 
+  const allCurrencies = body.map((cols) => cols[4]?.trim().toUpperCase()).filter(Boolean)
+
+  const unique = Array.from(new Set(allCurrencies))
+
+  let singleCurrency: string | null = null
+  let dualCurrencies: string[] = []
+
+  if (unique.length === 1) {
+    singleCurrency = unique[0]
+  } else if (unique.length === 2) {
+    dualCurrencies = unique
+  }
+
   return body.map((cols) => {
     const [rawDate, rawPurpose, rawPartner, rawAmount, rawCurrency, rawNBU, rawRate, rawCommission, rawBalance] = cols
 
@@ -37,6 +50,15 @@ export function parseMonobankStatement(rows: string[][]): IMonobankTableRow[] {
       partner_details = rawPartner.replace(/\s+/g, " ").trim()
     }
 
+    const currency = rawCurrency.trim().toUpperCase()
+    let nbu_currency: string
+
+    if (singleCurrency) {
+      nbu_currency = singleCurrency
+    } else {
+      nbu_currency = dualCurrencies.find((c) => c !== currency) || currency
+    }
+
     return {
       date_and_time: parseDateTimeDDMMYYYY(rawDate),
       purpose_of_payment: rawPurpose.replace(/\s+/g, " ").trim(),
@@ -44,8 +66,9 @@ export function parseMonobankStatement(rows: string[][]): IMonobankTableRow[] {
       counterparty_name,
       counterparty_iban,
       operation_amount: cleanNumber(rawAmount)!,
-      currency: rawCurrency.trim().toUpperCase(),
+      currency,
       amount_nbu_exchange_rate_equivalent: cleanNumber(rawNBU),
+      nbu_currency,
       exchange_rate: cleanNumber(rawRate),
       commission: cleanNumber(rawCommission),
       balance: cleanNumber(rawBalance),

@@ -16,6 +16,7 @@ export interface IMonobankTableRow {
   operation_amount: number
   currency: string
   amount_nbu_exchange_rate_equivalent: number | null
+  nbu_currency: string
   exchange_rate: number | null
   commission: number | null
   balance: number | null
