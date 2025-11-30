@@ -5,8 +5,10 @@
 # --- Data folders ---
 data/
 data/*
-files/
-files/*
+txn_statements/
+txn_statements/*
+tax_declarations/
+tax_declarations/*
 
 # --- Node.js ---
 node_modules/

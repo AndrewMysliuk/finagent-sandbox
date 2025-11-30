@@ -4,27 +4,22 @@ import path from "path"
 import { PDFParse, TextResult } from "pdf-parse"
 import { IBankDetectionResult, ITransactionStatement, TransactionTypeEnum } from "../types"
 import { parseMonobankStatement } from "./monobank"
-import {
-  detectFlagsForTxnStatements,
-  normalizeMonobankTransactionStatement,
-  normalizePryvatbankTransactionStatement,
-  normalizeUkrsibbankTransactionStatement,
-} from "../utils"
+import { detectFlagsForTxnStatements, normalizeMonobankTransactionStatement, normalizePryvatbankTransactionStatement, normalizeUkrsibbankTransactionStatement } from "../utils"
 import { calculateIntermediateSummariesByYear, getFopCreditsByQuarterFromStatement } from "../taxes_counter/common"
 import { FOP_CONFIG_2025_GROUP_3 } from "../taxes_counter/config"
 import { calculateQuarterDataFromStatementForGroup3 } from "../taxes_counter/fop_taxes_group_3_counter"
 import { parsePryvatbankStatement } from "./privatbank"
 import { parseUkrsibbankStatement } from "./ukrsibbank"
 
-const MONOBANK_STATEMENT_UAH_EN_PATH = "./files/monobank_statement_uah_en.pdf"
-const MONOBANK_STATEMENT_UAH_UK_PATH = "./files/monobank_statement_uah_uk.pdf"
-const MONOBANK_STATEMENT_USD_EN_PATH = "./files/monobank_statement_usd_en.pdf"
-const MONOBANK_STATEMENT_USD_UK_PATH = "./files/monobank_statement_usd_uk.pdf"
-const WISE_STATEMENT_EUR_EN_PATH = "./files/wise_statement_eur_en.pdf"
-const PRYVAT_STATEMENT_GBP_UK_PATH = "./files/pryvat_statement_gbp_uk.pdf"
-const PRYVAT_STATEMENT_UAH_UK_PATH = "./files/pryvat_statement_uah_uk.pdf"
-const UKRSIB_STATEMENT_UAH_UK_PATH = "./files/ukrsib_statement_uah_uk.pdf"
-const INVOICE_PATH = "./files/invoice.pdf"
+const MONOBANK_STATEMENT_UAH_EN_PATH = "./txn_statements/monobank_statement_uah_en.pdf"
+const MONOBANK_STATEMENT_UAH_UK_PATH = "./txn_statements/monobank_statement_uah_uk.pdf"
+const MONOBANK_STATEMENT_USD_EN_PATH = "./txn_statements/monobank_statement_usd_en.pdf"
+const MONOBANK_STATEMENT_USD_UK_PATH = "./txn_statements/monobank_statement_usd_uk.pdf"
+const WISE_STATEMENT_EUR_EN_PATH = "./txn_statements/wise_statement_eur_en.pdf"
+const PRYVAT_STATEMENT_GBP_UK_PATH = "./txn_statements/pryvat_statement_gbp_uk.pdf"
+const PRYVAT_STATEMENT_UAH_UK_PATH = "./txn_statements/pryvat_statement_uah_uk.pdf"
+const UKRSIB_STATEMENT_UAH_UK_PATH = "./txn_statements/ukrsib_statement_uah_uk.pdf"
+const INVOICE_PATH = "./txn_statements/invoice.pdf"
 
 export async function readPdf(path: string): Promise<TextResult> {
   const data = fs.readFileSync(path)
@@ -158,11 +153,7 @@ export function detectBank(document: TextResult): IBankDetectionResult {
   }
 }
 
-export async function parseStatementByBank(
-  raws: string[][],
-  document: TextResult,
-  bank: IBankDetectionResult
-): Promise<ITransactionStatement[]> {
+export async function parseStatementByBank(raws: string[][], document: TextResult, bank: IBankDetectionResult): Promise<ITransactionStatement[]> {
   if (bank.is_monobank) {
     const rawData = await parseMonobankStatement(raws)
 
@@ -172,15 +163,8 @@ export async function parseStatementByBank(
     }
 
     let normalizeTxn = rawData.map((item) => normalizeMonobankTransactionStatement(item))
-
-    console.dir(normalizeTxn, { depth: null })
-
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
-    normalizeTxn = normalizeTxn.filter(
-      (t) =>
-        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
-        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
-    )
+    normalizeTxn = normalizeTxn.filter((t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) || (t.type === TransactionTypeEnum.DEBIT && t.is_refund))
 
     if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
@@ -200,11 +184,7 @@ export async function parseStatementByBank(
 
     let normalizeTxn = rawData.map((item) => normalizePryvatbankTransactionStatement(item))
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
-    normalizeTxn = normalizeTxn.filter(
-      (t) =>
-        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
-        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
-    )
+    normalizeTxn = normalizeTxn.filter((t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) || (t.type === TransactionTypeEnum.DEBIT && t.is_refund))
 
     if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
@@ -234,11 +214,7 @@ export async function parseStatementByBank(
 
     let normalizeTxn = rawData.map((item) => normalizeUkrsibbankTransactionStatement(item))
     normalizeTxn = detectFlagsForTxnStatements(normalizeTxn)
-    normalizeTxn = normalizeTxn.filter(
-      (t) =>
-        (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) ||
-        (t.type === TransactionTypeEnum.DEBIT && t.is_refund)
-    )
+    normalizeTxn = normalizeTxn.filter((t) => (t.type === TransactionTypeEnum.CREDIT && !t.is_financial_aid && !t.is_fx_sale) || (t.type === TransactionTypeEnum.DEBIT && t.is_refund))
     if (!normalizeTxn.length) {
       console.error("We couldn't find any credit transactions from this file.")
       return
@@ -268,9 +244,9 @@ export async function parseStatementByBank(
 
   const rows = await parsePdf(filePath)
   const transactions = await parseStatementByBank(rows, document, bank)
-  // const quarters = getFopCreditsByQuarterFromStatement(transactions)
-  // const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
-  // const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
+  const quarters = getFopCreditsByQuarterFromStatement(transactions)
+  const quarter_data = calculateQuarterDataFromStatementForGroup3(quarters, FOP_CONFIG_2025_GROUP_3, false)
+  const intermediate_summaries = calculateIntermediateSummariesByYear(quarter_data, FOP_CONFIG_2025_GROUP_3.income_limit)
 
-  // console.dir({ quarter_data, intermediate_summaries }, { depth: null })
+  console.dir({ quarter_data, intermediate_summaries }, { depth: null })
 })()

@@ -31,7 +31,7 @@ export interface ITransactionStatement {
   type: TransactionTypeEnum
   amount_in_operation_currency: number
   operation_currency: string
-  amount_nbu_exchange_rate_equivalent: number | null
+  amount_nbu_exchange_rate_equivalent: number
   nbu_currency: string
   exchange_rate: number | null
   counterparty_name: string | null
